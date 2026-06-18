@@ -62,6 +62,18 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY="[YOUR-ANON-KEY]"
 
 Use the database password and anon key from the Supabase dashboard.
 
+For local IPv4 networks, use the Supabase **Session pooler** connection string instead of the direct database host:
+
+```bash
+DATABASE_URL="postgresql://postgres.xsvkksgwwekgobtkcffl:[YOUR-PASSWORD]@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres?schema=public"
+```
+
+Find the anon key in:
+
+```text
+Supabase Dashboard -> Project Settings -> API -> Project API keys -> anon public
+```
+
 ## Verification Commands
 
 ```bash

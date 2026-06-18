@@ -1,8 +1,41 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Building2, Globe2, KeyRound } from "lucide-react";
 
 export function AuthCard({ mode }: { mode: "sign-in" | "sign-up" }) {
   const isSignUp = mode === "sign-up";
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    const formData = new FormData(event.currentTarget);
+    const body = Object.fromEntries(formData.entries());
+    const endpoint = isSignUp ? "/api/auth/sign-up" : "/api/auth/sign-in";
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    const result = await response.json();
+    setLoading(false);
+
+    if (!response.ok) {
+      setError(result.error ?? "Authentication failed.");
+      return;
+    }
+
+    router.push("/");
+    router.refresh();
+  }
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#0B1020] px-4 py-10 text-[#F8FAFC]">
@@ -19,15 +52,15 @@ export function AuthCard({ mode }: { mode: "sign-in" | "sign-up" }) {
           </p>
         </div>
 
-        <form className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {isSignUp ? (
             <div className="grid gap-4 md:grid-cols-2">
-              <input className="field" placeholder="First Name" />
-              <input className="field" placeholder="Last Name" />
-              <input className="field md:col-span-2" placeholder="Company Name" />
-              <input className="field" placeholder="Phone Number" />
-              <input className="field" placeholder="Country" />
-              <select className="field md:col-span-2">
+              <input name="firstName" className="field" placeholder="First Name" required />
+              <input name="lastName" className="field" placeholder="Last Name" required />
+              <input name="companyName" className="field md:col-span-2" placeholder="Company Name" required />
+              <input name="phone" className="field" placeholder="Phone Number" />
+              <input name="country" className="field" placeholder="Country" />
+              <select name="companyType" className="field md:col-span-2" required>
                 <option>Facility Management Company</option>
                 <option>Cleaning Company</option>
                 <option>Landscaping Company</option>
@@ -40,14 +73,23 @@ export function AuthCard({ mode }: { mode: "sign-in" | "sign-up" }) {
               </select>
             </div>
           ) : null}
-          <input className="field" placeholder="Email Address" type="email" />
-          <input className="field" placeholder="Password" type="password" />
-          {isSignUp ? <input className="field" placeholder="Confirm Password" type="password" /> : null}
+          <input name="email" className="field" placeholder="Email Address" type="email" required />
+          <input name="password" className="field" placeholder="Password" type="password" minLength={8} required />
+          {isSignUp ? (
+            <input
+              name="confirmPassword"
+              className="field"
+              placeholder="Confirm Password"
+              type="password"
+              minLength={8}
+              required
+            />
+          ) : null}
 
           {!isSignUp ? (
             <div className="flex items-center justify-between text-sm text-[#94A3B8]">
               <label className="flex items-center gap-2">
-                <input type="checkbox" />
+                <input name="rememberMe" type="checkbox" />
                 Remember me
               </label>
               <Link href="/forgot-password" className="text-[#3B82F6]">
@@ -56,8 +98,18 @@ export function AuthCard({ mode }: { mode: "sign-in" | "sign-up" }) {
             </div>
           ) : null}
 
-          <button type="button" className="h-10 w-full rounded-md bg-[#3B82F6] text-sm font-semibold text-white">
-            {isSignUp ? "Create Account" : "Sign In"}
+          {error ? (
+            <div className="rounded-md border border-[#EF4444]/40 bg-[#EF4444]/10 px-3 py-2 text-sm text-[#FCA5A5]">
+              {error}
+            </div>
+          ) : null}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="h-10 w-full rounded-md bg-[#3B82F6] text-sm font-semibold text-white disabled:opacity-60"
+          >
+            {loading ? "Working..." : isSignUp ? "Create Account" : "Sign In"}
           </button>
         </form>
 

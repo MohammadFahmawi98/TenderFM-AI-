@@ -470,6 +470,57 @@ export async function getDocumentLibrary(organizationId?: string) {
   }
 }
 
+export async function getExportCenter(organizationId?: string) {
+  if (!hasDatabaseUrl()) {
+    return null;
+  }
+
+  try {
+    const tender = await getPrisma().tender.findFirst({
+      where: organizationId ? { organizationId } : undefined,
+      orderBy: { createdAt: "desc" },
+      include: {
+        files: {
+          select: {
+            id: true,
+            extractionStatus: true,
+          },
+        },
+        generatedFiles: {
+          orderBy: [{ kind: "asc" }, { version: "desc" }],
+          select: {
+            id: true,
+            kind: true,
+            type: true,
+            fileName: true,
+            title: true,
+            reviewStatus: true,
+            version: true,
+            lockedAt: true,
+            createdAt: true,
+          },
+        },
+        workspaceTasks: {
+          select: {
+            id: true,
+            status: true,
+          },
+        },
+        complianceItems: {
+          select: {
+            id: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    return tender;
+  } catch {
+    return null;
+  }
+}
+
 function emptyStats(databaseReady: boolean): DashboardStats {
   return {
     databaseReady,

@@ -9,7 +9,7 @@ export default function NewTenderPage() {
         <div>
           <h2 className="text-2xl font-semibold">Upload Tender</h2>
           <p className="mt-1 text-sm text-[#94A3B8]">
-            Create a real tender record from uploaded documents. Configure PostgreSQL first with a valid organization ID.
+            Create a real tender record from uploaded documents. Files are stored in the private Supabase Storage bucket.
           </p>
         </div>
         <Card>

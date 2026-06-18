@@ -46,7 +46,9 @@ export function TenderUploadForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      <input name="organizationId" placeholder="Organization ID" required className="field" />
+      <div className="rounded-md border border-[#1E293B] bg-[#0B1020] px-3 py-2 text-sm text-[#94A3B8]">
+        Tender uploads use your signed-in organization automatically.
+      </div>
       <div className="grid gap-4 md:grid-cols-2">
         <input name="tenderName" placeholder="Tender Name" required className="field" />
         <input name="clientName" placeholder="Client Name" required className="field" />

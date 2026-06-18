@@ -58,6 +58,7 @@ Create `.env` and add:
 DATABASE_URL="postgresql://postgres:[YOUR-PASSWORD]@db.xsvkksgwwekgobtkcffl.supabase.co:5432/postgres?schema=public"
 NEXT_PUBLIC_SUPABASE_URL="https://xsvkksgwwekgobtkcffl.supabase.co"
 NEXT_PUBLIC_SUPABASE_ANON_KEY="[YOUR-ANON-KEY]"
+SUPABASE_SERVICE_ROLE_KEY="[YOUR-SERVICE-ROLE-KEY]"
 ```
 
 Use the database password and anon key from the Supabase dashboard.
@@ -73,6 +74,37 @@ Find the anon key in:
 ```text
 Supabase Dashboard -> Project Settings -> API -> Project API keys -> anon public
 ```
+
+Find the service role key in:
+
+```text
+Supabase Dashboard -> Project Settings -> API -> Project API keys -> service_role
+```
+
+The service role key is used only on the server to upload files into the private `tender-files` bucket. Never expose it through `NEXT_PUBLIC_` variables and never commit it to Git.
+
+## Storage
+
+Private bucket:
+
+- `tender-files`
+
+Supported uploaded file types:
+
+- PDF
+- DOCX
+- XLSX
+- PPTX
+- XLS
+- CSV
+- ZIP
+- PNG
+- JPEG
+- WEBP
+
+Maximum file size:
+
+- 50 MB per file
 
 ## Verification Commands
 

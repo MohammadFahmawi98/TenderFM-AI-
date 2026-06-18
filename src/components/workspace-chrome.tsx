@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { clsx } from "clsx";
+import { AnimatedWorkspaceLoader } from "@/components/animated-workspace-loader";
 
 type ViewItem = {
   label: string;
@@ -26,7 +27,7 @@ export function WorkspaceHeader({
       <div className="flex flex-col gap-5 px-5 py-5 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#00E5FF]">{eyebrow}</p>
-          <h2 className="mt-2 truncate text-3xl font-semibold tracking-tight text-white md:text-4xl">{title}</h2>
+          <h2 className="mt-2 break-words text-3xl font-semibold tracking-tight text-white md:text-4xl">{title}</h2>
           {subtitle ? <p className="mt-3 max-w-4xl text-sm leading-6 text-[#94A3B8]">{subtitle}</p> : null}
         </div>
         {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
@@ -139,16 +140,7 @@ export function TaskBoard({
 export function WorkspaceSkeleton({ title = "Loading workspace" }: { title?: string }) {
   return (
     <div className="space-y-4 px-4 py-6 md:px-8">
-      <div className="rounded-lg border border-[#162033] bg-[#0B1220] p-5">
-        <div className="h-3 w-40 animate-pulse rounded bg-[#1E293B]" />
-        <div className="mt-4 h-8 w-2/3 animate-pulse rounded bg-[#1E293B]" />
-        <p className="mt-4 text-sm text-[#64748B]">{title}</p>
-        <div className="mt-6 grid gap-3 md:grid-cols-4">
-          {[0, 1, 2, 3].map((item) => (
-            <div key={item} className="h-20 animate-pulse rounded-md bg-[#050816]" />
-          ))}
-        </div>
-      </div>
+      <AnimatedWorkspaceLoader title={title} />
       <div className="h-12 animate-pulse rounded-lg border border-[#162033] bg-[#0B1220]" />
       <div className="grid gap-3 xl:grid-cols-4">
         {[0, 1, 2, 3].map((item) => (

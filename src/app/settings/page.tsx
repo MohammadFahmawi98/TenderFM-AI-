@@ -3,12 +3,12 @@ import { AppShell } from "@/components/app-shell";
 import { Card, PageSection } from "@/components/ui";
 import { StatusChip, ToolbarButton, ViewsBar, WorkspaceHeader } from "@/components/workspace-chrome";
 import { tenderAgents } from "@/lib/agents";
-import { getOrganizationMemory } from "@/lib/platform";
+import { getOrganizationMemory, getTeamSettings } from "@/lib/platform";
 
 const settingsSections = [
   "General",
   "Workspace",
-  "People",
+  "Team",
   "Permissions",
   "Statuses",
   "Fields",
@@ -68,6 +68,20 @@ const permissions = [
   ["Viewer", "Read-only workspace and final documents"],
 ];
 
+const teamGroups = [
+  ["Bid Office", "Bid managers, coordinators, and workspace owners"],
+  ["Commercial", "Pricing, BOQ review, margin, and commercial approvals"],
+  ["Operations", "Technical method, manpower, PPM, SLA, and KPI ownership"],
+  ["Executive Review", "Final risk, go/no-go, and submission approval gate"],
+];
+
+const handoffWorkflow = [
+  ["Intake owner", "Validates uploaded RFP files and missing source documents"],
+  ["Qualification owner", "Confirms go/no-go recommendation and win probability"],
+  ["Document owners", "Review generated technical, commercial, HSE, and compliance outputs"],
+  ["Final approver", "Locks approved documents and opens export package"],
+];
+
 const integrations = [
   ["Microsoft 365", "Email, Word, Excel, Teams, calendar"],
   ["Google Workspace", "Drive, Docs, Sheets, Gmail, calendar"],
@@ -80,9 +94,14 @@ const integrations = [
 export default async function SettingsPage() {
   const cookieStore = await cookies();
   const organizationId = cookieStore.get("tenderflow_organization_id")?.value;
-  const memory = await getOrganizationMemory(organizationId);
+  const [memory, team] = await Promise.all([getOrganizationMemory(organizationId), getTeamSettings(organizationId)]);
   const memoryFiles = memory?.files.length ?? 0;
   const memoryChunks = memory?.files.reduce((total, file) => total + file.knowledgeChunks.length, 0) ?? 0;
+  const teamMembers = team?.users ?? [];
+  const roleCounts = permissions.map(([role]) => ({
+    role,
+    count: teamMembers.filter((member) => member.roles.some((item) => item.role.name.toLowerCase() === role.toLowerCase())).length,
+  }));
 
   return (
     <AppShell>
@@ -100,6 +119,7 @@ export default async function SettingsPage() {
           }
           meta={[
             { label: "Settings Areas", value: settingsSections.length, tone: "blue" },
+            { label: "Team Members", value: teamMembers.length, tone: "green" },
             { label: "Agents", value: tenderAgents.length, tone: "green" },
             { label: "Memory Files", value: memoryFiles, tone: "amber" },
             { label: "Memory Chunks", value: memoryChunks },
@@ -109,7 +129,8 @@ export default async function SettingsPage() {
         <ViewsBar
           views={[
             { label: "General", href: "#general", active: true },
-            { label: "People", href: "#people" },
+            { label: "Team", href: "#team" },
+            { label: "Permissions", href: "#permissions" },
             { label: "Workflow", href: "#workflow" },
             { label: "Fields", href: "#fields" },
             { label: "Automations", href: "#automations" },
@@ -163,8 +184,96 @@ export default async function SettingsPage() {
               </div>
             </Card>
 
-            <Card id="people" className="bg-[#0B1220]">
-              <p className="text-xs uppercase tracking-[0.22em] text-[#00E5FF]">People and Permissions</p>
+            <Card id="team" className="bg-[#0B1220]">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.22em] text-[#00E5FF]">Team</p>
+                  <h3 className="mt-2 text-xl font-semibold">Workspace members and bid ownership</h3>
+                  <p className="mt-3 max-w-3xl text-sm leading-6 text-[#94A3B8]">
+                    Team settings control who can own a tender, review generated files, approve commercial content, and unlock final submission
+                    exports.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <StatusChip tone="green">{teamMembers.length} active</StatusChip>
+                  <StatusChip tone="muted">Invitation policy</StatusChip>
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-4 xl:grid-cols-[1.3fr_0.7fr]">
+                <div className="overflow-x-auto rounded-lg border border-[#162033] bg-[#050816]">
+                  <div className="grid min-w-[760px] grid-cols-[1.4fr_1fr_1fr_90px] gap-3 border-b border-[#162033] px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#64748B]">
+                    <span>Member</span>
+                    <span>Role</span>
+                    <span>Title</span>
+                    <span>Status</span>
+                  </div>
+                  {teamMembers.length === 0 ? (
+                    <div className="p-5 text-sm leading-6 text-[#94A3B8]">
+                      No organization users are available yet. After users sign up or are invited, they will appear here with their roles and
+                      access level.
+                    </div>
+                  ) : (
+                    teamMembers.map((member) => {
+                      const roles = member.roles.map((item) => item.role.name);
+                      return (
+                        <div
+                          key={member.id}
+                          className="grid min-w-[760px] grid-cols-[1.4fr_1fr_1fr_90px] gap-3 border-b border-[#162033] px-4 py-3 text-sm last:border-b-0"
+                        >
+                          <div className="flex min-w-0 items-center gap-3">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#1E293B] text-xs font-semibold text-[#00E5FF]">
+                              {memberInitials(member.firstName, member.lastName)}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="truncate font-semibold text-white">{member.firstName} {member.lastName}</p>
+                              <p className="truncate text-xs text-[#64748B]">{member.email}</p>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1">
+                            {roles.length ? roles.map((role) => <StatusChip key={role} tone="blue">{role}</StatusChip>) : <StatusChip>No role</StatusChip>}
+                          </div>
+                          <p className="truncate self-center text-[#94A3B8]">{member.title ?? "Not set"}</p>
+                          <div className="self-center"><StatusChip tone="green">Active</StatusChip></div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <div className="rounded-lg border border-[#162033] bg-[#050816] p-4">
+                    <p className="text-sm font-semibold">Invite workflow</p>
+                    <p className="mt-2 text-xs leading-5 text-[#94A3B8]">
+                      Use this policy to onboard users with role assignment, workspace access, and approval responsibility before they enter a tender
+                      workspace.
+                    </p>
+                    <div className="mt-4 grid gap-2">
+                      {["Invite by email", "Assign role", "Set workspace access", "Track acceptance"].map((item, index) => (
+                        <div key={item} className="flex items-center gap-3 rounded-md border border-[#162033] px-3 py-2">
+                          <span className="flex h-6 w-6 items-center justify-center rounded bg-[#1E293B] text-[10px] font-semibold text-[#00E5FF]">{index + 1}</span>
+                          <span className="text-xs text-[#94A3B8]">{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-[#162033] bg-[#050816] p-4">
+                    <p className="text-sm font-semibold">Role distribution</p>
+                    <div className="mt-4 space-y-2">
+                      {roleCounts.map((item) => (
+                        <div key={item.role} className="flex items-center justify-between rounded-md border border-[#162033] px-3 py-2">
+                          <span className="text-xs text-[#94A3B8]">{item.role}</span>
+                          <span className="text-sm font-semibold text-white">{item.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            <Card id="permissions" className="bg-[#0B1220]">
+              <p className="text-xs uppercase tracking-[0.22em] text-[#00E5FF]">Permissions</p>
               <h3 className="mt-2 text-xl font-semibold">Role model for tender teams</h3>
               <div className="mt-5 grid gap-3 md:grid-cols-2">
                 {permissions.map(([role, access]) => (
@@ -184,6 +293,32 @@ export default async function SettingsPage() {
                   <div key={status} className="rounded-lg border border-[#162033] bg-[#050816] p-4">
                     <StatusChip tone={tone}>{status}</StatusChip>
                     <p className="mt-3 text-xs leading-5 text-[#94A3B8]">{body}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 rounded-lg border border-[#162033] bg-[#050816] p-4">
+                <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold">Team handoff map</p>
+                    <p className="mt-1 text-xs leading-5 text-[#94A3B8]">Every tender moves through owners before export can be unlocked.</p>
+                  </div>
+                  <StatusChip tone="blue">Approval route</StatusChip>
+                </div>
+                <div className="mt-4 grid gap-3 md:grid-cols-4">
+                  {handoffWorkflow.map(([title, body], index) => (
+                    <div key={title} className="rounded-md border border-[#162033] bg-[#0B1220] p-3">
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#64748B]">Step {index + 1}</span>
+                      <p className="mt-2 text-sm font-semibold">{title}</p>
+                      <p className="mt-2 text-xs leading-5 text-[#94A3B8]">{body}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                {teamGroups.map(([group, body]) => (
+                  <div key={group} className="rounded-lg border border-[#162033] bg-[#050816] p-4">
+                    <p className="text-sm font-semibold">{group}</p>
+                    <p className="mt-2 text-xs leading-5 text-[#94A3B8]">{body}</p>
                   </div>
                 ))}
               </div>
@@ -273,4 +408,8 @@ export default async function SettingsPage() {
       </PageSection>
     </AppShell>
   );
+}
+
+function memberInitials(firstName: string, lastName: string) {
+  return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 }

@@ -310,6 +310,39 @@ export async function getOrganizationMemory(organizationId?: string) {
   }
 }
 
+export async function getTeamSettings(organizationId?: string) {
+  if (!hasDatabaseUrl()) {
+    return null;
+  }
+
+  try {
+    return await getPrisma().organization.findFirst({
+      where: organizationId ? { id: organizationId } : undefined,
+      orderBy: { createdAt: "asc" },
+      include: {
+        users: {
+          orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+          include: {
+            roles: {
+              include: {
+                role: {
+                  select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+  } catch {
+    return null;
+  }
+}
+
 export async function getLatestWorkspaceTender(organizationId?: string) {
   if (!hasDatabaseUrl()) {
     return null;

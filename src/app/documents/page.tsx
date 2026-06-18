@@ -2,24 +2,10 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { AppShell } from "@/components/app-shell";
 import { DocumentCommentForm } from "@/components/document-comment-form";
+import { DocumentGenerationActions } from "@/components/document-generation-actions";
+import { GeneratedDocumentEditor } from "@/components/generated-document-editor";
 import { Card, EmptyState, PageSection } from "@/components/ui";
 import { getDocumentLibrary } from "@/lib/platform";
-
-const expectedDocuments = [
-  "Technical Proposal",
-  "Commercial Proposal",
-  "Compliance Matrix",
-  "Manpower Plan",
-  "PPM Schedule",
-  "SLA Matrix",
-  "KPI Matrix",
-  "Risk Register",
-  "HSE Plan",
-  "Method Statements",
-  "Executive Summary",
-  "PowerPoint Presentation",
-  "Excel Cost Sheet",
-];
 
 const integrations = [
   "GOOGLE_DRIVE",
@@ -83,19 +69,16 @@ export default async function DocumentsPage() {
                 </div>
               </Card>
 
+              <Card className="bg-[#0B1220]">
+                <DocumentGenerationActions tenderId={tender.id} />
+              </Card>
+
               {tender.generatedFiles.length === 0 ? (
                 <Card className="bg-[#0B1220]">
                   <EmptyState
                     title="No generated documents yet"
-                    body="AI-generated documents will appear here after the document generation agent is connected."
+                    body="Generate one document or the full submission package from the extracted RFP source data."
                   />
-                  <div className="grid gap-2 border-t border-[#162033] pt-5 sm:grid-cols-2 lg:grid-cols-3">
-                    {expectedDocuments.map((document) => (
-                      <div key={document} className="rounded-md border border-[#162033] bg-[#050816] p-3 text-sm text-[#94A3B8]">
-                        {document}
-                      </div>
-                    ))}
-                  </div>
                 </Card>
               ) : (
                 tender.generatedFiles.map((file) => (
@@ -108,26 +91,13 @@ export default async function DocumentsPage() {
                           {file.type} - {file.reviewStatus.replaceAll("_", " ")} - v{file.version}
                         </p>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        {["Preview", "AI rewrite", "Regenerate section", "Compare versions", "Download"].map((action) => (
-                          <button key={action} className="rounded-md border border-[#1E293B] px-3 py-2 text-xs font-semibold text-[#F8FAFC]">
-                            {action}
-                          </button>
-                        ))}
+                      <div className="rounded-md border border-[#162033] bg-[#050816] px-3 py-2 text-xs text-[#94A3B8]">
+                        {file.lockedAt ? `Locked ${file.lockedAt.toLocaleDateString()}` : "Editable"}
                       </div>
                     </div>
 
                     <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_280px]">
-                      <div className="min-h-72 rounded-lg border border-[#162033] bg-[#050816] p-5">
-                        <p className="text-xs uppercase tracking-[0.18em] text-[#94A3B8]">Inline Editor</p>
-                        <div className="mt-4 space-y-4 text-sm leading-7 text-[#CBD5E1]">
-                          <h4 className="text-lg font-semibold text-[#F8FAFC]">{file.title ?? file.fileName}</h4>
-                          <p>
-                            Rich text editing, tables, headings, AI rewrite tools, track changes, and approvals will use this generated
-                            document record as the source of truth.
-                          </p>
-                        </div>
-                      </div>
+                      <GeneratedDocumentEditor file={file} />
 
                       <div className="space-y-3">
                         <div className="rounded-lg border border-[#162033] bg-[#050816] p-4">

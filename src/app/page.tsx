@@ -1,81 +1,131 @@
 import Link from "next/link";
-import { AgentActivityGrid } from "@/components/agent-activity-grid";
 import { AppShell } from "@/components/app-shell";
-import { PageSection } from "@/components/ui";
-import { tenderAgents } from "@/lib/agents";
-import { commandItems } from "@/lib/navigation";
+import { Card, DatabaseNotice, EmptyState, PageSection } from "@/components/ui";
+import { getDashboardStats, getRecentTenders } from "@/lib/platform";
 
-const supportedFiles = ["PDF", "DOCX", "XLSX", "PPTX", "ZIP", "BOQ", "Contracts", "Drawings", "Specifications", "Images", "Appendices"];
+const statusColors: Record<string, string> = {
+  DRAFT: "bg-[#94A3B8]/15 text-[#94A3B8]",
+  UPLOADED: "bg-[#3B82F6]/15 text-[#3B82F6]",
+  PROCESSING: "bg-[#3B82F6]/15 text-[#3B82F6]",
+  ANALYZED: "bg-[#10B981]/15 text-[#10B981]",
+  QUALIFIED: "bg-[#10B981]/15 text-[#10B981]",
+  NO_GO: "bg-[#EF4444]/15 text-[#EF4444]",
+  IN_ESTIMATION: "bg-[#F59E0B]/15 text-[#F59E0B]",
+  IN_PROPOSAL: "bg-[#F59E0B]/15 text-[#F59E0B]",
+  SUBMITTED: "bg-[#8B5CF6]/15 text-[#8B5CF6]",
+  WON: "bg-[#10B981]/15 text-[#10B981]",
+  LOST: "bg-[#EF4444]/15 text-[#EF4444]",
+  ARCHIVED: "bg-[#94A3B8]/15 text-[#94A3B8]",
+};
 
-export default function HomePage() {
+export default async function DashboardPage() {
+  const [stats, recentTenders] = await Promise.all([getDashboardStats(), getRecentTenders()]);
+
   return (
     <AppShell>
-      <PageSection className="min-h-[calc(100vh-80px)] py-8 md:py-12">
-        <section className="mx-auto grid w-full max-w-7xl gap-10 xl:grid-cols-[1fr_360px]">
+      <PageSection>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-sm font-medium uppercase tracking-[0.24em] text-[#00E5FF]">AI Command Center</p>
-            <h2 className="mt-5 max-w-5xl text-5xl font-semibold leading-tight tracking-tight text-white md:text-6xl">
-              Upload an RFP. Generate a Complete FM Tender Package.
-            </h2>
-            <p className="mt-6 max-w-3xl text-base leading-7 text-[#94A3B8]">
-              TenderFlow reads the tender, activates specialized AI agents, analyzes requirements, and prepares submission-ready deliverables.
+            <h2 className="text-2xl font-semibold tracking-tight">Dashboard</h2>
+            <p className="mt-1 text-sm text-[#94A3B8]">
+              Tender pipeline overview and key performance indicators.
             </p>
+          </div>
+          <Link
+            href="/tenders/new"
+            className="rounded-md bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white"
+          >
+            Upload RFP
+          </Link>
+        </div>
 
-            <Link
-              href="/tenders/new"
-              className="mt-10 flex min-h-[42vh] flex-col justify-between rounded-2xl border border-dashed border-[#3B82F6]/70 bg-[#0B1220] p-6 text-left shadow-2xl transition hover:border-[#00E5FF] hover:bg-[#111827]"
-            >
-              <div>
-                <p className="text-xs uppercase tracking-[0.22em] text-[#00E5FF]">Primary Upload Area</p>
-                <h3 className="mt-4 text-3xl font-semibold">Upload RFP files</h3>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-[#94A3B8]">
-                  The workspace is created from the documents, then TenderFlow extracts requirements, risk, compliance, effort, and readiness.
-                </p>
-              </div>
-              <div>
-                <div className="mt-8 flex flex-wrap gap-2">
-                  {supportedFiles.map((item) => (
-                    <span key={item} className="rounded-md border border-white/[0.06] bg-[#050816] px-3 py-2 text-xs text-[#F8FAFC]">
-                      {item}
+        <DatabaseNotice ready={stats.databaseReady} />
+
+        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { label: "Active Tenders", value: stats.activeTenders, color: "text-[#3B82F6]" },
+            { label: "Qualified", value: stats.qualifiedTenders, color: "text-[#10B981]" },
+            { label: "Submitted", value: stats.submittedTenders, color: "text-[#8B5CF6]" },
+            { label: "Won", value: stats.wonTenders, color: "text-[#10B981]" },
+          ].map((kpi) => (
+            <Card key={kpi.label} className="bg-[#0B1220]">
+              <p className="text-xs uppercase tracking-[0.16em] text-[#94A3B8]">{kpi.label}</p>
+              <p className={`mt-2 text-3xl font-semibold ${kpi.color}`}>{kpi.value}</p>
+            </Card>
+          ))}
+        </section>
+
+        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { label: "Pipeline Value", value: stats.pipelineValue },
+            { label: "Win Rate", value: stats.winRate },
+            { label: "Upcoming Deadlines", value: stats.upcomingDeadlines },
+            { label: "Estimated Revenue", value: stats.estimatedRevenue },
+          ].map((kpi) => (
+            <Card key={kpi.label} className="bg-[#0B1220]">
+              <p className="text-xs uppercase tracking-[0.16em] text-[#94A3B8]">{kpi.label}</p>
+              <p className="mt-2 text-xl font-semibold">{kpi.value}</p>
+            </Card>
+          ))}
+        </section>
+
+        <Card className="bg-[#0B1220]">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Recent Tenders</h3>
+            <Link href="/tenders" className="text-sm font-medium text-[#3B82F6]">
+              View all
+            </Link>
+          </div>
+
+          {recentTenders.length === 0 ? (
+            <EmptyState
+              title="No tenders yet"
+              body="Upload your first RFP to start building your tender pipeline."
+              action={
+                <Link
+                  href="/tenders/new"
+                  className="rounded-md bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white"
+                >
+                  Upload RFP
+                </Link>
+              }
+            />
+          ) : (
+            <div className="divide-y divide-[#1E293B]">
+              {recentTenders.map((tender) => (
+                <Link
+                  key={tender.id}
+                  href={`/tenders/${tender.id}`}
+                  className="grid gap-2 p-4 transition hover:bg-[#111827] md:grid-cols-[1fr_160px_140px_120px]"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{tender.name}</p>
+                    <p className="mt-0.5 truncate text-sm text-[#94A3B8]">
+                      {tender.clientName}
+                    </p>
+                  </div>
+                  <div className="flex items-center">
+                    <span
+                      className={`rounded-md px-2 py-1 text-[11px] font-semibold uppercase ${
+                        statusColors[tender.status] ?? statusColors.DRAFT
+                      }`}
+                    >
+                      {tender.status.replaceAll("_", " ")}
                     </span>
-                  ))}
-                </div>
-                <div className="mt-8 inline-flex rounded-md bg-[#3B82F6] px-5 py-3 text-sm font-semibold text-white">Upload RFP</div>
-              </div>
-            </Link>
-          </div>
-
-          <aside className="space-y-4">
-            <div className="rounded-xl border border-white/[0.06] bg-[#0B1220] p-5">
-              <p className="text-xs uppercase tracking-[0.22em] text-[#00E5FF]">Command System</p>
-              <div className="mt-5 space-y-2">
-                {commandItems.map((item) => (
-                  <Link
-                    key={item}
-                    href={item === "Analyze Tender" ? "/tenders/new" : item === "Open Workspace" ? "/workspaces" : "/documents"}
-                    className="block rounded-md border border-white/[0.06] bg-[#050816] px-3 py-3 text-sm text-[#F8FAFC] transition hover:border-[#00E5FF]/50"
-                  >
-                    {item}
-                  </Link>
-                ))}
-              </div>
-              <p className="mt-5 text-xs text-[#94A3B8]">Use CTRL + K from anywhere to open commands.</p>
+                  </div>
+                  <p className="self-center text-sm text-[#94A3B8]">
+                    {tender.estimatedValue
+                      ? `${tender.currency} ${Number(tender.estimatedValue).toLocaleString()}`
+                      : "No value"}
+                  </p>
+                  <p className="self-center text-sm text-[#94A3B8]">
+                    {tender.submissionDeadline?.toLocaleDateString() ?? "No deadline"}
+                  </p>
+                </Link>
+              ))}
             </div>
-          </aside>
-        </section>
-
-        <section className="mx-auto mt-12 w-full max-w-7xl">
-          <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.22em] text-[#00E5FF]">AI Bid Department</p>
-              <h3 className="mt-2 text-2xl font-semibold">Specialized FM agents ready for the uploaded tender</h3>
-            </div>
-            <Link href="/workspace" className="text-sm font-semibold text-[#3B82F6]">
-              View active workspace
-            </Link>
-          </div>
-          <AgentActivityGrid agents={tenderAgents} />
-        </section>
+          )}
+        </Card>
       </PageSection>
     </AppShell>
   );

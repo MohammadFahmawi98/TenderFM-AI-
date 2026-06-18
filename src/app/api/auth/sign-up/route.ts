@@ -11,13 +11,11 @@ const signUpSchema = z
     lastName: z.string().min(2),
     companyName: z.string().min(2),
     email: z.string().email(),
-    phone: z.string().optional(),
-    country: z.string().optional(),
     companyType: z.string().min(2),
     password: z.string().min(8),
-    confirmPassword: z.string().min(8),
+    confirmPassword: z.string().optional(),
   })
-  .refine((data) => data.password === data.confirmPassword, {
+  .refine((data) => !data.confirmPassword || data.password === data.confirmPassword, {
     message: "Passwords do not match.",
     path: ["confirmPassword"],
   });
@@ -49,7 +47,6 @@ export async function POST(request: Request) {
       data: {
         name: payload.data.companyName,
         type: toOrganizationType(payload.data.companyType),
-        country: payload.data.country || undefined,
       },
     });
 
@@ -59,7 +56,6 @@ export async function POST(request: Request) {
         email,
         firstName: payload.data.firstName,
         lastName: payload.data.lastName,
-        phone: payload.data.phone || undefined,
         passwordHash: hashPassword(payload.data.password),
       },
     });

@@ -97,6 +97,48 @@ export async function getRecentTenders() {
   }
 }
 
+export async function getTenderWorkspaces(organizationId?: string) {
+  if (!hasDatabaseUrl()) {
+    return [];
+  }
+
+  try {
+    return await getPrisma().tender.findMany({
+      where: organizationId ? { organizationId } : undefined,
+      orderBy: { updatedAt: "desc" },
+      take: 20,
+      include: {
+        files: {
+          select: {
+            id: true,
+            extractionStatus: true,
+          },
+        },
+        generatedFiles: {
+          select: {
+            id: true,
+            reviewStatus: true,
+          },
+        },
+        workspaceTasks: {
+          select: {
+            id: true,
+            status: true,
+          },
+        },
+        analysis: {
+          select: {
+            winProbability: true,
+            recommendation: true,
+          },
+        },
+      },
+    });
+  } catch {
+    return [];
+  }
+}
+
 export async function getLatestWorkspaceTender(organizationId?: string) {
   if (!hasDatabaseUrl()) {
     return null;

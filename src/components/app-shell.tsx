@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CommandBar } from "@/components/command-bar";
 import { navItems } from "@/lib/navigation";
+import { SignOutButton } from "@/components/sign-out-button";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -19,7 +20,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <nav className="py-5">
             {navItems.map((item) => {
-              const active = pathname === item.href;
+              const active = pathname === item.href || (item.href === "/workspaces" && pathname.startsWith("/workspace"));
               return (
                 <Link
                   key={item.label}
@@ -54,7 +55,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <p className="text-xs font-medium uppercase tracking-[0.2em] text-[#00E5FF]">AI Tender Operating System</p>
                 <h1 className="truncate text-xl font-semibold tracking-tight md:text-2xl">TenderFlow FM AI</h1>
               </div>
-              <CommandBar />
+              <div className="flex items-center gap-2">
+                <CommandBar />
+                <SignOutButton />
+              </div>
             </div>
 
             <nav className="flex gap-2 overflow-x-auto border-t border-[#162033] py-2 md:hidden">
@@ -63,7 +67,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   key={item.label}
                   href={item.href}
                   className={`shrink-0 rounded-md border px-3 py-1.5 text-xs tracking-[0.12em] ${
-                    pathname === item.href
+                    pathname === item.href || (item.href === "/workspaces" && pathname.startsWith("/workspace"))
                       ? "border-[#00E5FF] bg-[#00E5FF]/10 text-white"
                       : "border-[#162033] bg-[#111827] text-[#94A3B8]"
                   }`}

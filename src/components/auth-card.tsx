@@ -3,7 +3,18 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Building2, Globe2, KeyRound } from "lucide-react";
+
+const companyTypes = [
+  "Facility Management Company",
+  "Cleaning Company",
+  "Landscaping Company",
+  "MEP Contractor",
+  "HVAC Contractor",
+  "Security Company",
+  "Pest Control Company",
+  "Property Management Company",
+  "Government Entity",
+];
 
 export function AuthCard({ mode }: { mode: "sign-in" | "sign-up" }) {
   const isSignUp = mode === "sign-up";
@@ -33,103 +44,97 @@ export function AuthCard({ mode }: { mode: "sign-in" | "sign-up" }) {
       return;
     }
 
-    router.push("/");
+    router.push(isSignUp ? "/tenders/new" : "/");
     router.refresh();
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#0B1020] px-4 py-10 text-[#F8FAFC]">
-      <section className="w-full max-w-xl rounded-lg border border-[#1E293B] bg-[#111827] p-6">
-        <div className="mb-6">
-          <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-[#3B82F6]">
-            <KeyRound className="h-5 w-5" />
+    <main className="min-h-screen bg-[#050816] px-4 py-8 text-[#F8FAFC]">
+      <section className="mx-auto grid min-h-[calc(100vh-64px)] w-full max-w-6xl overflow-hidden rounded-2xl border border-white/[0.06] bg-[#0B1220] lg:grid-cols-[1fr_520px]">
+        <div className="flex flex-col justify-between bg-[#111827] p-8 md:p-10">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#00E5FF]">TenderFlow AI</p>
+            <h1 className="mt-6 max-w-2xl text-5xl font-semibold leading-tight tracking-tight">
+              {isSignUp ? "Create your AI bid department." : "Welcome back to your tender operating system."}
+            </h1>
+            <p className="mt-5 max-w-xl text-base leading-7 text-[#94A3B8]">
+              {isSignUp
+                ? "Start with an organization workspace built for FM tender analysis, AI agents, document review, and final submission packages."
+                : "Open your workspaces, generated documents, agents, and submission package review."}
+            </p>
           </div>
-          <h1 className="text-2xl font-semibold">{isSignUp ? "Create Account" : "Sign In"}</h1>
-          <p className="mt-2 text-sm text-[#94A3B8]">
-            {isSignUp
-              ? "Create an organization workspace for TenderFlow FM AI."
-              : "Access your tender intelligence workspace."}
-          </p>
+
+          <div className="mt-10 grid gap-3 sm:grid-cols-3">
+            {["Upload RFP", "Agents Generate", "Team Reviews"].map((item) => (
+              <div key={item} className="rounded-lg border border-white/[0.06] bg-[#050816] p-4">
+                <p className="text-sm font-semibold">{item}</p>
+              </div>
+            ))}
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {isSignUp ? (
-            <div className="grid gap-4 md:grid-cols-2">
-              <input name="firstName" className="field" placeholder="First Name" required />
-              <input name="lastName" className="field" placeholder="Last Name" required />
-              <input name="companyName" className="field md:col-span-2" placeholder="Company Name" required />
-              <input name="phone" className="field" placeholder="Phone Number" />
-              <input name="country" className="field" placeholder="Country" />
-              <select name="companyType" className="field md:col-span-2" required>
-                <option>Facility Management Company</option>
-                <option>Cleaning Company</option>
-                <option>Landscaping Company</option>
-                <option>MEP Contractor</option>
-                <option>HVAC Contractor</option>
-                <option>Security Company</option>
-                <option>Pest Control Company</option>
-                <option>Government Entity</option>
-                <option>Property Management Company</option>
-              </select>
+        <div className="flex items-center p-6 md:p-10">
+          <div className="w-full">
+            <div className="mb-8">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#00E5FF]">
+                {isSignUp ? "Organization Setup" : "Secure Access"}
+              </p>
+              <h2 className="mt-3 text-3xl font-semibold">{isSignUp ? "Create workspace" : "Sign in"}</h2>
             </div>
-          ) : null}
-          <input name="email" className="field" placeholder="Email Address" type="email" required />
-          <input name="password" className="field" placeholder="Password" type="password" minLength={8} required />
-          {isSignUp ? (
-            <input
-              name="confirmPassword"
-              className="field"
-              placeholder="Confirm Password"
-              type="password"
-              minLength={8}
-              required
-            />
-          ) : null}
 
-          {!isSignUp ? (
-            <div className="flex items-center justify-between text-sm text-[#94A3B8]">
-              <label className="flex items-center gap-2">
-                <input name="rememberMe" type="checkbox" />
-                Remember me
-              </label>
-              <Link href="/forgot-password" className="text-[#3B82F6]">
-                Forgot password
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {isSignUp ? (
+                <>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <input name="firstName" className="field" placeholder="First name" required />
+                    <input name="lastName" className="field" placeholder="Last name" required />
+                  </div>
+                  <input name="companyName" className="field" placeholder="Company name" required />
+                  <select name="companyType" className="field" required defaultValue="">
+                    <option value="" disabled>
+                      Company type
+                    </option>
+                    {companyTypes.map((type) => (
+                      <option key={type}>{type}</option>
+                    ))}
+                  </select>
+                </>
+              ) : null}
+
+              <input name="email" className="field" placeholder="Work email" type="email" required />
+              <input name="password" className="field" placeholder="Password" type="password" minLength={8} required />
+
+              {!isSignUp ? (
+                <div className="flex items-center justify-between text-sm text-[#94A3B8]">
+                  <label className="flex items-center gap-2">
+                    <input name="rememberMe" type="checkbox" />
+                    Remember me
+                  </label>
+                  <Link href="/forgot-password" className="text-[#3B82F6]">
+                    Forgot password
+                  </Link>
+                </div>
+              ) : null}
+
+              {error ? <div className="rounded-md border border-[#EF4444]/40 bg-[#EF4444]/10 px-3 py-2 text-sm text-[#FCA5A5]">{error}</div> : null}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="h-11 w-full rounded-md bg-[#3B82F6] text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {loading ? "Working..." : isSignUp ? "Create workspace" : "Sign in"}
+              </button>
+            </form>
+
+            <p className="mt-6 text-center text-sm text-[#94A3B8]">
+              {isSignUp ? "Already have a workspace?" : "Need a workspace?"}{" "}
+              <Link href={isSignUp ? "/sign-in" : "/sign-up"} className="text-[#3B82F6]">
+                {isSignUp ? "Sign in" : "Create one"}
               </Link>
-            </div>
-          ) : null}
-
-          {error ? (
-            <div className="rounded-md border border-[#EF4444]/40 bg-[#EF4444]/10 px-3 py-2 text-sm text-[#FCA5A5]">
-              {error}
-            </div>
-          ) : null}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="h-10 w-full rounded-md bg-[#3B82F6] text-sm font-semibold text-white disabled:opacity-60"
-          >
-            {loading ? "Working..." : isSignUp ? "Create Account" : "Sign In"}
-          </button>
-        </form>
-
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <button className="flex h-10 items-center justify-center gap-2 rounded-md border border-[#1E293B] text-sm">
-            <Globe2 className="h-4 w-4" />
-            Google
-          </button>
-          <button className="flex h-10 items-center justify-center gap-2 rounded-md border border-[#1E293B] text-sm">
-            <Building2 className="h-4 w-4" />
-            Microsoft
-          </button>
+            </p>
+          </div>
         </div>
-
-        <p className="mt-6 text-center text-sm text-[#94A3B8]">
-          {isSignUp ? "Already have an account?" : "Need a workspace?"}{" "}
-          <Link href={isSignUp ? "/sign-in" : "/sign-up"} className="text-[#3B82F6]">
-            {isSignUp ? "Sign in" : "Create account"}
-          </Link>
-        </p>
       </section>
     </main>
   );

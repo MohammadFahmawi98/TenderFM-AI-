@@ -5,21 +5,10 @@ import { DocumentCommentForm } from "@/components/document-comment-form";
 import { FileMetadataEditor } from "@/components/file-metadata-editor";
 import { WorkspaceTaskForm } from "@/components/workspace-task-form";
 import { Card, EmptyState, PageSection } from "@/components/ui";
+import { tenderAgents } from "@/lib/agents";
 import { getLatestWorkspaceTender } from "@/lib/platform";
 
-const agents = [
-  ["Tender Intelligence Agent", "analysis"],
-  ["Qualification Agent", "review"],
-  ["Compliance Agent", "compliance"],
-  ["Technical Proposal Agent", "drafting"],
-  ["Commercial Agent", "commercial"],
-  ["Manpower Agent", "planning"],
-  ["PPM Agent", "planning"],
-  ["Risk Agent", "risk"],
-  ["HSE Agent", "hse"],
-  ["Presentation Agent", "waiting"],
-  ["Executive Review Agent", "waiting"],
-];
+const workspaceTabs = ["OVERVIEW", "REQUIREMENTS", "AI AGENTS", "DOCUMENTS", "COMPLIANCE", "COMMERCIAL", "SUBMISSION PACKAGE"];
 
 export default async function WorkspacePage() {
   const cookieStore = await cookies();
@@ -64,6 +53,46 @@ export default async function WorkspacePage() {
           </Card>
         ) : (
           <>
+            <Card className="bg-[#0B1220]">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.22em] text-[#00E5FF]">Active Tender Workspace</p>
+                  <h3 className="mt-2 text-3xl font-semibold">{tender.name}</h3>
+                  <p className="mt-2 text-sm text-[#94A3B8]">
+                    {tender.clientName} - Deadline {tender.submissionDeadline?.toLocaleDateString() ?? "not set"} - {tender.currency}{" "}
+                    {tender.estimatedValue ? Number(tender.estimatedValue).toLocaleString() : "value pending"}
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                  <div className="rounded-md bg-[#050816] p-3">
+                    <p className="text-xs text-[#94A3B8]">Readiness</p>
+                    <p className="mt-1 text-xl font-semibold text-[#10B981]">{readiness}%</p>
+                  </div>
+                  <div className="rounded-md bg-[#050816] p-3">
+                    <p className="text-xs text-[#94A3B8]">Win Probability</p>
+                    <p className="mt-1 text-xl font-semibold">{tender.analysis?.winProbability ?? "-"}%</p>
+                  </div>
+                  <div className="rounded-md bg-[#050816] p-3">
+                    <p className="text-xs text-[#94A3B8]">Documents</p>
+                    <p className="mt-1 text-xl font-semibold">{tender.generatedFiles.length}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-6 flex gap-2 overflow-x-auto border-t border-white/[0.06] pt-4">
+                {workspaceTabs.map((tab, index) => (
+                  <a
+                    key={tab}
+                    href={index === 0 ? "#overview" : `#${tab.toLowerCase().replaceAll(" ", "-")}`}
+                    className={`shrink-0 rounded-md px-3 py-2 text-xs font-semibold tracking-[0.12em] ${
+                      index === 0 ? "bg-[#3B82F6] text-white" : "border border-white/[0.06] text-[#94A3B8]"
+                    }`}
+                  >
+                    {tab}
+                  </a>
+                ))}
+              </div>
+            </Card>
+
             <section className="grid gap-4 xl:grid-cols-[330px_1fr_360px]">
               <Card className="bg-[#0B1220]">
                 <p className="text-xs uppercase tracking-[0.2em] text-[#00E5FF]">Uploaded File Management</p>
@@ -92,7 +121,7 @@ export default async function WorkspacePage() {
                 </div>
               </Card>
 
-              <Card className="min-h-[560px] bg-[#0B1220]">
+              <Card id="overview" className="min-h-[560px] bg-[#0B1220]">
                 <div className="border-b border-[#162033] pb-4">
                   <h3 className="text-lg font-semibold">Tender Workspace</h3>
                   <p className="mt-1 text-sm text-[#94A3B8]">
@@ -179,10 +208,16 @@ export default async function WorkspacePage() {
               <Card className="bg-[#0B1220]">
                 <h3 className="text-lg font-semibold">Agent Orchestration</h3>
                 <div className="mt-5 space-y-2">
-                  {agents.map(([agent, mode]) => (
-                    <div key={agent} className="flex items-center justify-between gap-3 rounded-md border border-[#162033] bg-[#050816] p-3">
-                      <span className="text-sm">{agent}</span>
-                      <span className="text-xs text-[#94A3B8]">{chunkCount === 0 ? "Waiting" : mode === "waiting" ? "Queued" : "Ready"}</span>
+                  {tenderAgents.map((agent) => (
+                    <div key={agent.name} className="rounded-md border border-[#162033] bg-[#050816] p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm">{agent.name}</span>
+                        <span className="text-xs text-[#94A3B8]">{chunkCount === 0 ? "Waiting" : agent.status}</span>
+                      </div>
+                      <div className="mt-3 h-1.5 rounded-full bg-[#111827]">
+                        <div className="h-full rounded-full bg-[#3B82F6]" style={{ width: `${chunkCount === 0 ? 0 : agent.progress}%` }} />
+                      </div>
+                      <p className="mt-2 text-xs leading-5 text-[#94A3B8]">{agent.currentTask}</p>
                     </div>
                   ))}
                 </div>

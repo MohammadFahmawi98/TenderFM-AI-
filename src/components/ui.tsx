@@ -14,11 +14,17 @@ export function PageSection({
 export function Card({
   children,
   className,
+  id,
 }: {
   children: React.ReactNode;
   className?: string;
+  id?: string;
 }) {
-  return <section className={clsx("rounded-lg border border-[#1E293B] bg-[#111827] p-5", className)}>{children}</section>;
+  return (
+    <section id={id} className={clsx("rounded-lg border border-[#1E293B] bg-[#111827] p-5", className)}>
+      {children}
+    </section>
+  );
 }
 
 export function EmptyState({

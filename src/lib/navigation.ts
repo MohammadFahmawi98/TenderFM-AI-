@@ -1,6 +1,6 @@
 export const navItems = [
   { label: "HOME", href: "/" },
-  { label: "WORKSPACE", href: "/workspace" },
+  { label: "WORKSPACES", href: "/workspaces" },
   { label: "KNOWLEDGE", href: "/knowledge" },
   { label: "DOCUMENTS", href: "/documents" },
   { label: "ORGANIZATION", href: "/organization" },
@@ -8,13 +8,13 @@ export const navItems = [
 ];
 
 export const commandItems = [
-  "Analyze Uploaded Tender",
-  "Generate FM Technical Proposal",
-  "Generate Commercial Proposal",
-  "Create Manpower Plan",
-  "Create PPM Schedule",
+  "Analyze Tender",
+  "Generate Proposal",
+  "Generate Commercial Model",
+  "Generate Presentation",
   "Generate SLA Matrix",
-  "Generate Executive Presentation",
-  "Generate Risk Register",
-  "Search Knowledge",
+  "Create Risk Register",
+  "Search Knowledge Base",
+  "Open Workspace",
+  "Find Documents",
 ];

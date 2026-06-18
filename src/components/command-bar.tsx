@@ -1,11 +1,30 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { commandItems } from "@/lib/navigation";
 
+const commandHref: Record<string, string> = {
+  "Analyze Tender": "/tenders/new",
+  "Generate Proposal": "/documents",
+  "Generate Commercial Model": "/documents",
+  "Generate Presentation": "/documents",
+  "Generate SLA Matrix": "/documents",
+  "Create Risk Register": "/workspace",
+  "Search Knowledge Base": "/knowledge",
+  "Open Workspace": "/workspaces",
+  "Find Documents": "/documents",
+};
+
 export function CommandBar() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+
+  function runCommand(item: string) {
+    setOpen(false);
+    router.push(commandHref[item] ?? "/");
+  }
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -60,6 +79,7 @@ export function CommandBar() {
                 {commandItems.map((item) => (
                   <button
                     key={item}
+                    onClick={() => runCommand(item)}
                     className="flex h-11 w-full items-center rounded-md px-3 text-left text-sm text-[#F8FAFC] hover:bg-[#111827]"
                   >
                     {item}

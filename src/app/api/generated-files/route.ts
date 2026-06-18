@@ -81,6 +81,22 @@ export async function POST(request: Request) {
           },
         },
       },
+      organization: {
+        include: {
+          knowledgeChunks: {
+            orderBy: { createdAt: "desc" },
+            take: 18,
+            include: {
+              tenderFile: {
+                select: {
+                  fileName: true,
+                  displayName: true,
+                },
+              },
+            },
+          },
+        },
+      },
     },
   });
 

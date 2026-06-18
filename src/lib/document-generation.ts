@@ -39,6 +39,16 @@ type SourceTender = {
     score: number;
     mitigation?: string | null;
   }>;
+  organization?: {
+    knowledgeChunks?: Array<{
+      content: string;
+      sourceType?: string | null;
+      tenderFile?: {
+        fileName: string;
+        displayName?: string | null;
+      };
+    }>;
+  } | null;
 };
 
 export type GeneratedDocumentDraft = {
@@ -76,6 +86,7 @@ export const documentBlueprints: Array<{
 export function buildGeneratedDocument(tender: SourceTender, kind: GeneratedDocumentKind): GeneratedDocumentDraft {
   const blueprint = documentBlueprints.find((item) => item.kind === kind) ?? documentBlueprints[0];
   const evidence = collectEvidence(tender);
+  const memory = collectMemory(tender);
   const summary = tender.analysis?.executiveSummary ?? "No extracted executive summary is available yet.";
   const technical = tender.analysis?.technicalSummary ?? "Technical analysis is pending readable source text.";
   const commercial = tender.analysis?.commercialSummary ?? "Commercial analysis is pending readable source text.";
@@ -100,6 +111,7 @@ export function buildGeneratedDocument(tender: SourceTender, kind: GeneratedDocu
   const sectionsByKind: Record<GeneratedDocumentKind, GeneratedDocumentDraft["sections"]> = {
     TECHNICAL_PROPOSAL: [
       ...common,
+      { heading: "Company Capability Evidence", body: memory.capability || "No company capability evidence uploaded yet.", source: memory.sourceLabel },
       { heading: "Executive Technical Response", body: technical, source: sourceLabel },
       { heading: "Scope Understanding", body: evidence.scope || "Scope details require reviewer completion after source review.", source: sourceLabel },
       { heading: "Delivery Methodology", body: buildMethodology(evidence) },
@@ -113,6 +125,11 @@ export function buildGeneratedDocument(tender: SourceTender, kind: GeneratedDocu
     ],
     COMPLIANCE_MATRIX: [
       ...common,
+      {
+        heading: "Company Evidence Matches",
+        body: memory.certifications || "No certification or compliance evidence uploaded yet.",
+        source: memory.sourceLabel,
+      },
       {
         heading: "Compliance Requirements",
         body: tender.complianceItems?.length
@@ -151,16 +168,19 @@ export function buildGeneratedDocument(tender: SourceTender, kind: GeneratedDocu
     ],
     HSE_PLAN: [
       ...common,
+      { heading: "Organization HSE Memory", body: memory.hse || "No HSE manual uploaded yet.", source: memory.sourceLabel },
       { heading: "HSE Requirements", body: evidence.hse || "No explicit HSE requirement text detected. Include organization HSE manual and site-specific risk controls." },
       { heading: "Controls", body: "Induction, toolbox talks, permits, PPE, incident reporting, emergency response, method statements, and audit schedule." },
     ],
     METHOD_STATEMENT: [
       ...common,
+      { heading: "Reusable Company Method Evidence", body: memory.methods || "No method statements or SOPs uploaded yet.", source: memory.sourceLabel },
       { heading: "Method Statement Basis", body: buildMethodology(evidence), source: sourceLabel },
       { heading: "Quality Control", body: "Define inspection checkpoints, supervisor sign-off, client reporting, non-conformance handling, and corrective actions." },
     ],
     EXECUTIVE_SUMMARY: [
       ...common,
+      { heading: "Company Memory", body: memory.capability || "Company memory has not been uploaded yet.", source: memory.sourceLabel },
       { heading: "Opportunity Intelligence", body: summary, source: sourceLabel },
       {
         heading: "Decision View",
@@ -170,8 +190,9 @@ export function buildGeneratedDocument(tender: SourceTender, kind: GeneratedDocu
     POWERPOINT_PRESENTATION: [
       ...common,
       { heading: "Slide 1 - Opportunity", body: summary, source: sourceLabel },
-      { heading: "Slide 2 - Delivery Model", body: technical },
-      { heading: "Slide 3 - Risks and Readiness", body: tender.riskItems?.map((risk) => risk.title).join("\n") || "No risk records detected yet." },
+      { heading: "Slide 2 - Company Strengths", body: memory.capability || technical },
+      { heading: "Slide 3 - Delivery Model", body: technical },
+      { heading: "Slide 4 - Risks and Readiness", body: tender.riskItems?.map((risk) => risk.title).join("\n") || "No risk records detected yet." },
     ],
     EXCEL_COST_SHEET: [
       ...common,
@@ -191,6 +212,31 @@ export function buildGeneratedDocument(tender: SourceTender, kind: GeneratedDocu
     fileName: `${slugify(tender.name)}-${blueprint.kind.toLowerCase()}.${blueprint.type.toLowerCase()}`,
     sections: sectionsByKind[kind],
   };
+}
+
+function collectMemory(tender: SourceTender) {
+  const chunks =
+    tender.organization?.knowledgeChunks?.map((chunk) => ({
+      source: chunk.tenderFile?.displayName ?? chunk.tenderFile?.fileName ?? chunk.sourceType ?? "Company memory",
+      sourceType: chunk.sourceType ?? "Company Evidence",
+      content: chunk.content,
+    })) ?? [];
+
+  return {
+    sourceLabel: chunks[0] ? `Company memory: ${chunks[0].source}` : "Company memory not uploaded",
+    capability: findMemory(chunks, ["company profile", "capability", "experience", "project", "case study", "reference"]),
+    certifications: findMemory(chunks, ["iso", "certificate", "certification", "license", "vat", "trade license"]),
+    hse: findMemory(chunks, ["hse", "safety", "iso 45001", "risk assessment", "permit", "ppe"]),
+    methods: findMemory(chunks, ["method statement", "sop", "procedure", "quality", "manual"]),
+  };
+}
+
+function findMemory(chunks: Array<{ source: string; sourceType: string; content: string }>, terms: string[]) {
+  const matches = chunks
+    .filter((chunk) => terms.some((term) => `${chunk.sourceType} ${chunk.content}`.toLowerCase().includes(term)))
+    .slice(0, 3);
+
+  return matches.map((match) => `${match.content.slice(0, 700)}\n\nMemory source: ${match.source}`).join("\n\n");
 }
 
 function collectEvidence(tender: SourceTender) {

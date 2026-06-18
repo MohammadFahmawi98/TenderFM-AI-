@@ -231,6 +231,7 @@ export async function getKnowledgeNetwork(organizationId?: string) {
       chunks,
       tenderFiles,
       companyFiles,
+      companyKnowledgeChunks,
       suppliers,
       users,
     ] = await Promise.all([
@@ -245,6 +246,7 @@ export async function getKnowledgeNetwork(organizationId?: string) {
       prisma.tenderDocumentChunk.count({ where: organizationId ? { tender: { organizationId } } : undefined }),
       prisma.tenderFile.count({ where }),
       prisma.tenderFile.count({ where: organizationId ? { organizationId, purpose: "COMPANY_DOCUMENT" } : { purpose: "COMPANY_DOCUMENT" } }),
+      prisma.organizationKnowledgeChunk.count({ where }),
       prisma.supplier.count({ where }),
       prisma.user.count({ where }),
     ]);
@@ -255,12 +257,53 @@ export async function getKnowledgeNetwork(organizationId?: string) {
       tenders,
       tenderFiles,
       companyFiles,
+      companyKnowledgeChunks,
       chunks,
       complianceItems,
       riskItems,
       suppliers,
       users,
       generatedByKind,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function getOrganizationMemory(organizationId?: string) {
+  if (!hasDatabaseUrl()) {
+    return null;
+  }
+
+  try {
+    const prisma = getPrisma();
+    const where = organizationId ? { organizationId, purpose: "COMPANY_DOCUMENT" as const } : { purpose: "COMPANY_DOCUMENT" as const };
+    const [files, chunksBySource] = await Promise.all([
+      prisma.tenderFile.findMany({
+        where,
+        orderBy: { uploadedAt: "desc" },
+        take: 30,
+        include: {
+          knowledgeChunks: {
+            select: {
+              id: true,
+            },
+          },
+        },
+      }),
+      prisma.organizationKnowledgeChunk.groupBy({
+        by: ["sourceType"],
+        where: organizationId ? { organizationId } : undefined,
+        _count: { _all: true },
+      }),
+    ]);
+
+    return {
+      files,
+      chunksBySource: chunksBySource.map((item) => ({
+        sourceType: item.sourceType ?? "Company Evidence",
+        count: item._count._all,
+      })),
     };
   } catch {
     return null;

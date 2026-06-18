@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
 import { AppShell } from "@/components/app-shell";
+import { CompanyKnowledgeUploadForm } from "@/components/company-knowledge-upload-form";
 import { Card, PageSection } from "@/components/ui";
-import { getKnowledgeNetwork } from "@/lib/platform";
+import { getKnowledgeNetwork, getOrganizationMemory } from "@/lib/platform";
 
 const documentMemory = [
   ["Technical Proposals", "TECHNICAL_PROPOSAL"],
@@ -21,7 +22,8 @@ const documentMemory = [
 export default async function KnowledgePage() {
   const cookieStore = await cookies();
   const organizationId = cookieStore.get("tenderflow_organization_id")?.value;
-  const network = await getKnowledgeNetwork(organizationId);
+  const [network, memory] = await Promise.all([getKnowledgeNetwork(organizationId), getOrganizationMemory(organizationId)]);
+  const companyFiles = memory?.files ?? [];
 
   return (
     <AppShell>
@@ -37,7 +39,7 @@ export default async function KnowledgePage() {
           {[
             ["Tenders Learned", network?.tenders ?? 0],
             ["Source Files", network?.tenderFiles ?? 0],
-            ["Indexed Chunks", network?.chunks ?? 0],
+            ["Indexed Chunks", (network?.chunks ?? 0) + (network?.companyKnowledgeChunks ?? 0)],
             ["Team Members", network?.users ?? 0],
           ].map(([label, value]) => (
             <Card key={label} className="bg-[#0B1220]">
@@ -46,6 +48,39 @@ export default async function KnowledgePage() {
             </Card>
           ))}
         </section>
+        <Card className="bg-[#0B1220]">
+          <CompanyKnowledgeUploadForm />
+        </Card>
+
+        <Card className="bg-[#0B1220]">
+          <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.22em] text-[#00E5FF]">Organization AI Memory</p>
+              <h3 className="mt-2 text-xl font-semibold">Uploaded evidence and reusable knowledge</h3>
+            </div>
+            <p className="text-sm text-[#94A3B8]">{network?.companyKnowledgeChunks ?? 0} indexed chunk(s)</p>
+          </div>
+          {companyFiles.length === 0 ? (
+            <p className="rounded-md border border-[#162033] bg-[#050816] p-4 text-sm text-[#94A3B8]">
+              No company memory uploaded yet. Add company profile, certificates, references, SOPs, HSE manuals, staff CVs, equipment lists,
+              and pricing libraries to ground future generated proposals.
+            </p>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {companyFiles.map((file) => (
+                <div key={file.id} className="rounded-lg border border-[#162033] bg-[#050816] p-4">
+                  <p className="text-sm font-semibold">{file.displayName ?? "Company Evidence"}</p>
+                  <p className="mt-1 break-words text-xs text-[#94A3B8]">{file.fileName}</p>
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <span className="text-xs text-[#64748B]">{file.extractionStatus}</span>
+                    <span className="text-xs text-[#00E5FF]">{file.knowledgeChunks.length} chunks</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
         <Card className="bg-[#0B1220]">
           <div className="mb-5">
             <p className="text-xs uppercase tracking-[0.22em] text-[#00E5FF]">Document Knowledge Network</p>

@@ -42,3 +42,18 @@ export function buildTenderStoragePath({
 
   return `${organizationId}/tenders/${tenderId}/${crypto.randomUUID()}-${safeFileName || "upload"}`;
 }
+
+export function buildCompanyKnowledgeStoragePath({
+  organizationId,
+  fileName,
+}: {
+  organizationId: string;
+  fileName: string;
+}) {
+  const safeFileName = fileName
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 160);
+
+  return `${organizationId}/knowledge/${crypto.randomUUID()}-${safeFileName || "company-document"}`;
+}

@@ -4,12 +4,11 @@ import { AppShell } from "@/components/app-shell";
 import { DocumentCommentForm } from "@/components/document-comment-form";
 import { FileMetadataEditor } from "@/components/file-metadata-editor";
 import { WorkspaceTaskForm } from "@/components/workspace-task-form";
+import { StatusChip, TaskBoard, ToolbarButton, ViewsBar, WorkspaceHeader } from "@/components/workspace-chrome";
 import { Card, EmptyState, PageSection } from "@/components/ui";
 import { tenderAgents } from "@/lib/agents";
 import { getLatestWorkspaceTender } from "@/lib/platform";
 import { calculateSubmissionReadiness } from "@/lib/readiness";
-
-const workspaceTabs = ["OVERVIEW", "REQUIREMENTS", "AI AGENTS", "DOCUMENTS", "COMPLIANCE", "COMMERCIAL", "SUBMISSION PACKAGE"];
 
 export default async function WorkspacePage() {
   const cookieStore = await cookies();
@@ -25,22 +24,66 @@ export default async function WorkspacePage() {
         goNoGoReasoning?: Array<{ factor: string; score: number; evidence?: string[] }>;
       }
     | null;
+  const taskColumns = tender
+    ? [
+        {
+          title: "TODO",
+          tone: "muted" as const,
+          items: tender.workspaceTasks
+            .filter((task) => task.status === "TODO" || task.status === "BLOCKED")
+            .map((task) => taskCard(task)),
+        },
+        {
+          title: "IN PROGRESS",
+          tone: "blue" as const,
+          items: tender.workspaceTasks.filter((task) => task.status === "IN_PROGRESS").map((task) => taskCard(task)),
+        },
+        {
+          title: "IN REVIEW",
+          tone: "amber" as const,
+          items: tender.workspaceTasks.filter((task) => task.status === "IN_REVIEW").map((task) => taskCard(task)),
+        },
+        {
+          title: "APPROVED",
+          tone: "green" as const,
+          items: tender.workspaceTasks
+            .filter((task) => task.status === "APPROVED" || task.status === "COMPLETED")
+            .map((task) => taskCard(task)),
+        },
+      ]
+    : [];
 
   return (
     <AppShell>
       <PageSection>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-sm font-medium uppercase tracking-[0.22em] text-[#00E5FF]">Team Workspace</p>
-            <h2 className="mt-3 text-4xl font-semibold tracking-tight">Collaborative tender submission workspace</h2>
-            <p className="mt-3 max-w-3xl text-base leading-7 text-[#94A3B8]">
-              Upload RFP, AI agents generate, team reviews, final package export. Every action is tied to the live tender record.
-            </p>
-          </div>
-          <Link href="/tenders/new" className="rounded-md bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white">
-            Upload RFP
-          </Link>
-        </div>
+        <WorkspaceHeader
+          eyebrow="Team Workspace"
+          title={tender?.name ?? "Collaborative tender submission workspace"}
+          subtitle={
+            tender
+              ? `${tender.clientName} - Deadline ${tender.submissionDeadline?.toLocaleDateString() ?? "not set"}`
+              : "Upload RFP, AI agents generate, team reviews, final package export. Every action is tied to the live tender record."
+          }
+          actions={
+            <>
+              <ToolbarButton href="/tenders/new">Upload RFP</ToolbarButton>
+              <ToolbarButton href="/documents">Documents</ToolbarButton>
+              <ToolbarButton href="/exports">Export</ToolbarButton>
+            </>
+          }
+          meta={
+            tender
+              ? [
+                  { label: "Readiness", value: `${readiness?.score ?? 0}%`, tone: "green" },
+                  { label: "Win", value: `${tender.analysis?.winProbability ?? "-"}%`, tone: "blue" },
+                  { label: "Documents", value: tender.generatedFiles.length },
+                  { label: "Tasks", value: tender.workspaceTasks.length, tone: "amber" },
+                  { label: "Risks", value: tender.riskItems.length, tone: "red" },
+                  { label: "Value", value: tender.estimatedValue ? `${tender.currency} ${Number(tender.estimatedValue).toLocaleString()}` : "Pending" },
+                ]
+              : undefined
+          }
+        />
 
         {!tender ? (
           <Card className="bg-[#0B1220]">
@@ -56,31 +99,24 @@ export default async function WorkspacePage() {
           </Card>
         ) : (
           <>
+            <ViewsBar
+              views={[
+                { label: "Overview", href: "#overview", active: true },
+                { label: "Board", href: "#board", count: tender.workspaceTasks.length },
+                { label: "Requirements", href: "#requirements", count: chunkCount },
+                { label: "Agents", href: "#agents", count: tenderAgents.length },
+                { label: "Documents", href: "/documents", count: tender.generatedFiles.length },
+                { label: "Export", href: "/exports" },
+              ]}
+              right={
+                <>
+                  <StatusChip tone="blue">{tender.status.replaceAll("_", " ")}</StatusChip>
+                  <StatusChip tone={readiness && readiness.score >= 80 ? "green" : "amber"}>{readiness?.score ?? 0}% ready</StatusChip>
+                </>
+              }
+            />
+
             <Card className="bg-[#0B1220]">
-              <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.22em] text-[#00E5FF]">Active Tender Workspace</p>
-                  <h3 className="mt-2 text-3xl font-semibold">{tender.name}</h3>
-                  <p className="mt-2 text-sm text-[#94A3B8]">
-                    {tender.clientName} - Deadline {tender.submissionDeadline?.toLocaleDateString() ?? "not set"} - {tender.currency}{" "}
-                    {tender.estimatedValue ? Number(tender.estimatedValue).toLocaleString() : "value pending"}
-                  </p>
-                </div>
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                  <div className="rounded-md bg-[#050816] p-3">
-                    <p className="text-xs text-[#94A3B8]">Readiness</p>
-                    <p className="mt-1 text-xl font-semibold text-[#10B981]">{readiness?.score ?? 0}%</p>
-                  </div>
-                  <div className="rounded-md bg-[#050816] p-3">
-                    <p className="text-xs text-[#94A3B8]">Win Probability</p>
-                    <p className="mt-1 text-xl font-semibold">{tender.analysis?.winProbability ?? "-"}%</p>
-                  </div>
-                  <div className="rounded-md bg-[#050816] p-3">
-                    <p className="text-xs text-[#94A3B8]">Documents</p>
-                    <p className="mt-1 text-xl font-semibold">{tender.generatedFiles.length}</p>
-                  </div>
-                </div>
-              </div>
               <div className="mt-6 grid gap-3 border-t border-white/[0.06] pt-5 md:grid-cols-4">
                 <div className="rounded-md bg-[#050816] p-3">
                   <p className="text-xs text-[#94A3B8]">Go / No-Go</p>
@@ -99,19 +135,17 @@ export default async function WorkspacePage() {
                   <p className="mt-1 text-lg font-semibold">{scopeBreakdown?.effort?.totalHours ? `${scopeBreakdown.effort.totalHours}h` : "Pending"}</p>
                 </div>
               </div>
-              <div className="mt-6 flex gap-2 overflow-x-auto border-t border-white/[0.06] pt-4">
-                {workspaceTabs.map((tab, index) => (
-                  <a
-                    key={tab}
-                    href={index === 0 ? "#overview" : `#${tab.toLowerCase().replaceAll(" ", "-")}`}
-                    className={`shrink-0 rounded-md px-3 py-2 text-xs font-semibold tracking-[0.12em] ${
-                      index === 0 ? "bg-[#3B82F6] text-white" : "border border-white/[0.06] text-[#94A3B8]"
-                    }`}
-                  >
-                    {tab}
-                  </a>
-                ))}
+            </Card>
+
+            <Card id="board" className="bg-[#0B1220]">
+              <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.22em] text-[#00E5FF]">Workspace Board</p>
+                  <h3 className="mt-2 text-xl font-semibold">Team tasks by status</h3>
+                </div>
+                <ToolbarButton href="#assignment">Create Task</ToolbarButton>
               </div>
+              <TaskBoard columns={taskColumns} />
             </Card>
 
             <section className="grid gap-4 xl:grid-cols-[330px_1fr_360px]">
@@ -174,7 +208,7 @@ export default async function WorkspacePage() {
 
                   {tender.files.flatMap((file) =>
                     file.chunks.map((chunk) => (
-                      <div key={chunk.id} className="rounded-lg border border-[#162033] bg-[#050816] p-4">
+                      <div id="requirements" key={chunk.id} className="rounded-lg border border-[#162033] bg-[#050816] p-4">
                         <div className="flex items-center justify-between gap-3">
                           <p className="text-xs uppercase tracking-[0.18em] text-[#94A3B8]">{file.displayName ?? file.fileName}</p>
                           <span className="text-xs text-[#00E5FF]">Chunk {chunk.chunkIndex + 1}</span>
@@ -240,7 +274,7 @@ export default async function WorkspacePage() {
                 </div>
               </Card>
 
-              <Card className="bg-[#0B1220]">
+              <Card id="agents" className="bg-[#0B1220]">
                 <h3 className="text-lg font-semibold">Agent Orchestration</h3>
                 <div className="mt-5 space-y-2">
                   {tenderAgents.map((agent) => (
@@ -279,7 +313,7 @@ export default async function WorkspacePage() {
             </section>
 
             <section className="grid gap-4 xl:grid-cols-[1fr_360px]">
-              <Card className="bg-[#0B1220]">
+              <Card id="assignment" className="bg-[#0B1220]">
                 <h3 className="text-lg font-semibold">Team Assignment System</h3>
                 <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_320px]">
                   <WorkspaceTaskForm tenderId={tender.id} users={tender.organization.users} files={tender.files} />
@@ -336,4 +370,19 @@ export default async function WorkspacePage() {
       </PageSection>
     </AppShell>
   );
+}
+
+function taskCard(task: {
+  id: string;
+  title: string;
+  priority: string;
+  assignee?: { firstName: string; lastName: string } | null;
+  relatedFile?: { displayName: string | null; fileName: string } | null;
+}) {
+  return {
+    id: task.id,
+    title: task.title,
+    subtitle: task.relatedFile ? task.relatedFile.displayName ?? task.relatedFile.fileName : undefined,
+    meta: `${task.priority}${task.assignee ? ` - ${task.assignee.firstName} ${task.assignee.lastName}` : " - Unassigned"}`,
+  };
 }

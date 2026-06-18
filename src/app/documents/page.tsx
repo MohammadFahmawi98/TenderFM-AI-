@@ -5,6 +5,7 @@ import { DocumentCommentForm } from "@/components/document-comment-form";
 import { DocumentGenerationActions } from "@/components/document-generation-actions";
 import { GeneratedDocumentEditor } from "@/components/generated-document-editor";
 import { Card, EmptyState, PageSection } from "@/components/ui";
+import { StatusChip, ToolbarButton, ViewsBar, WorkspaceHeader } from "@/components/workspace-chrome";
 import { getDocumentLibrary } from "@/lib/platform";
 
 const integrations = [
@@ -29,18 +30,27 @@ export default async function DocumentsPage() {
   return (
     <AppShell>
       <PageSection>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-sm font-medium uppercase tracking-[0.22em] text-[#00E5FF]">Document Editor</p>
-            <h2 className="mt-3 text-4xl font-semibold tracking-tight">Generated document review system</h2>
-            <p className="mt-3 max-w-3xl text-base leading-7 text-[#94A3B8]">
-              Preview, edit, comment, version, approve, lock, and export generated tender documents.
-            </p>
-          </div>
-          <Link href="/workspace" className="rounded-md bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white">
-            Open Workspace
-          </Link>
-        </div>
+        <WorkspaceHeader
+          eyebrow="Document Editor"
+          title="Generated document review system"
+          subtitle="Preview, edit, comment, version, approve, lock, and export generated tender documents."
+          actions={
+            <>
+              <ToolbarButton href="/workspace">Workspace</ToolbarButton>
+              <ToolbarButton href="/exports">Export Center</ToolbarButton>
+            </>
+          }
+          meta={
+            tender
+              ? [
+                  { label: "Tender", value: tender.name },
+                  { label: "Generated", value: tender.generatedFiles.length, tone: "blue" },
+                  { label: "Tasks", value: tender.workspaceTasks.length, tone: "amber" },
+                  { label: "Client", value: tender.clientName },
+                ]
+              : undefined
+          }
+        />
 
         {!tender ? (
           <Card className="bg-[#0B1220]">
@@ -57,7 +67,17 @@ export default async function DocumentsPage() {
         ) : (
           <section className="grid gap-4 xl:grid-cols-[1fr_360px]">
             <div className="space-y-4">
-              <Card className="bg-[#0B1220]">
+              <ViewsBar
+                views={[
+                  { label: "All", href: "#all-documents", active: true, count: tender.generatedFiles.length },
+                  { label: "Drafts", href: "#all-documents", count: tender.generatedFiles.filter((file) => file.reviewStatus === "DRAFT").length },
+                  { label: "Review", href: "#all-documents", count: tender.generatedFiles.filter((file) => file.reviewStatus === "IN_REVIEW").length },
+                  { label: "Approved", href: "#all-documents", count: tender.generatedFiles.filter((file) => ["APPROVED", "FINAL"].includes(file.reviewStatus)).length },
+                  { label: "Tasks", href: "#document-tasks", count: tender.workspaceTasks.length },
+                ]}
+                right={<StatusChip tone="blue">Document workspace</StatusChip>}
+              />
+              <Card id="document-tasks" className="bg-[#0B1220]">
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
                     <h3 className="text-lg font-semibold">{tender.name}</h3>

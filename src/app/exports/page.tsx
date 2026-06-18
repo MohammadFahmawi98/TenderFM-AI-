@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { AppShell } from "@/components/app-shell";
 import { SubmissionExportActions } from "@/components/submission-export-actions";
 import { Card, EmptyState, PageSection } from "@/components/ui";
+import { StatusChip, ToolbarButton, ViewsBar, WorkspaceHeader } from "@/components/workspace-chrome";
 import { getExportGate, getRequiredExportKinds } from "@/lib/export-generation";
 import { getExportCenter } from "@/lib/platform";
 import { calculateSubmissionReadiness } from "@/lib/readiness";
@@ -21,18 +22,27 @@ export default async function ExportCenterPage() {
   return (
     <AppShell>
       <PageSection>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-sm font-medium uppercase tracking-[0.22em] text-[#00E5FF]">Export Center</p>
-            <h2 className="mt-3 text-4xl font-semibold tracking-tight">Submission package control</h2>
-            <p className="mt-3 max-w-3xl text-base leading-7 text-[#94A3B8]">
-              Lock approved tender documents into a final ZIP package with a manifest, readiness checklist, and audit trail.
-            </p>
-          </div>
-          <Link href="/documents" className="rounded-md bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white">
-            Open Documents
-          </Link>
-        </div>
+        <WorkspaceHeader
+          eyebrow="Export Center"
+          title="Submission package control"
+          subtitle="Lock approved tender documents into a final ZIP package with a manifest, readiness checklist, and audit trail."
+          actions={
+            <>
+              <ToolbarButton href="/documents">Documents</ToolbarButton>
+              <ToolbarButton href="/workspace">Workspace</ToolbarButton>
+            </>
+          }
+          meta={
+            tender
+              ? [
+                  { label: "Readiness", value: `${readiness?.score ?? 0}%`, tone: "green" },
+                  { label: "Required Open", value: exportGate.missingRequiredKinds.length, tone: exportGate.canExport ? "green" : "amber" },
+                  { label: "Packages", value: packages.length, tone: "blue" },
+                  { label: "Documents", value: documents.length },
+                ]
+              : undefined
+          }
+        />
 
         {!tender ? (
           <Card className="bg-[#0B1220]">
@@ -48,6 +58,15 @@ export default async function ExportCenterPage() {
           </Card>
         ) : (
           <>
+            <ViewsBar
+              views={[
+                { label: "Gate", href: "#gate", active: true },
+                { label: "Checklist", href: "#checklist", count: requiredKinds.length },
+                { label: "Packages", href: "#packages", count: packages.length },
+                { label: "Documents", href: "/documents", count: documents.length },
+              ]}
+              right={<StatusChip tone={exportGate.canExport ? "green" : "amber"}>{exportGate.canExport ? "Ready to export" : "Approvals needed"}</StatusChip>}
+            />
             <section className="grid gap-3 md:grid-cols-5">
               {[
                 ["Readiness", `${readiness?.score ?? 0}%`],
@@ -63,7 +82,7 @@ export default async function ExportCenterPage() {
               ))}
             </section>
 
-            <Card className="bg-[#0B1220]">
+            <Card id="gate" className="bg-[#0B1220]">
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.22em] text-[#00E5FF]">Active Tender</p>
@@ -84,7 +103,7 @@ export default async function ExportCenterPage() {
             </Card>
 
             <section className="grid gap-4 xl:grid-cols-[1fr_380px]">
-              <Card className="bg-[#0B1220]">
+              <Card id="checklist" className="bg-[#0B1220]">
                 <h3 className="text-lg font-semibold">Required Package Checklist</h3>
                 <div className="mt-5 grid gap-3 md:grid-cols-2">
                   {requiredKinds.map((kind) => {
@@ -108,7 +127,7 @@ export default async function ExportCenterPage() {
                 </div>
               </Card>
 
-              <Card className="bg-[#0B1220]">
+              <Card id="packages" className="bg-[#0B1220]">
                 <h3 className="text-lg font-semibold">Exported Packages</h3>
                 <div className="mt-4 space-y-3">
                   {packages.length === 0 ? (

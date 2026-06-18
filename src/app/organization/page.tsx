@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { AppShell } from "@/components/app-shell";
 import { CompanyKnowledgeUploadForm } from "@/components/company-knowledge-upload-form";
 import { Card, PageSection } from "@/components/ui";
+import { StatusChip, ToolbarButton, ViewsBar, WorkspaceHeader } from "@/components/workspace-chrome";
 import { getOrganizationMemory } from "@/lib/platform";
 
 export default async function OrganizationPage() {
@@ -13,15 +14,32 @@ export default async function OrganizationPage() {
   return (
     <AppShell>
       <PageSection>
-        <div>
-          <p className="text-sm font-medium uppercase tracking-[0.22em] text-[#00E5FF]">Organization</p>
-          <h2 className="mt-3 text-4xl font-semibold tracking-tight">Company bid capability profile</h2>
-          <p className="mt-3 max-w-3xl text-base leading-7 text-[#94A3B8]">
-            Manage company identity, certifications, roles, team access, and FM capability data used by the AI bid department.
-          </p>
-        </div>
+        <WorkspaceHeader
+          eyebrow="Organization"
+          title="Company bid capability profile"
+          subtitle="Manage company identity, certifications, roles, team access, and FM capability data used by the AI bid department."
+          actions={
+            <>
+              <ToolbarButton href="/knowledge">Knowledge Hub</ToolbarButton>
+              <ToolbarButton href="/settings">Settings</ToolbarButton>
+            </>
+          }
+          meta={[
+            { label: "Company Files", value: files.length, tone: "blue" },
+            { label: "Indexed Chunks", value: files.reduce((total, file) => total + file.knowledgeChunks.length, 0), tone: "green" },
+            { label: "Categories", value: memory?.chunksBySource.length ?? 0, tone: "amber" },
+          ]}
+        />
+        <ViewsBar
+          views={[
+            { label: "Profile", href: "#profile", active: true },
+            { label: "Memory", href: "#memory", count: files.length },
+            { label: "Settings", href: "/settings" },
+          ]}
+          right={<StatusChip tone="green">Tenant memory</StatusChip>}
+        />
 
-        <section className="grid gap-4 xl:grid-cols-[1fr_420px]">
+        <section id="profile" className="grid gap-4 xl:grid-cols-[1fr_420px]">
           <Card className="bg-[#0B1220]">
             <CompanyKnowledgeUploadForm />
           </Card>
@@ -43,7 +61,7 @@ export default async function OrganizationPage() {
           </Card>
         </section>
 
-        <Card className="bg-[#0B1220]">
+        <Card id="memory" className="bg-[#0B1220]">
           <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.22em] text-[#00E5FF]">Organization Memory</p>

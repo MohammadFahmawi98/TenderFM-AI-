@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { AppShell } from "@/components/app-shell";
 import { CompanyKnowledgeUploadForm } from "@/components/company-knowledge-upload-form";
 import { Card, PageSection } from "@/components/ui";
+import { StatusChip, ToolbarButton, ViewsBar, WorkspaceHeader } from "@/components/workspace-chrome";
 import { getKnowledgeNetwork, getOrganizationMemory } from "@/lib/platform";
 
 const documentMemory = [
@@ -28,13 +29,31 @@ export default async function KnowledgePage() {
   return (
     <AppShell>
       <PageSection>
-        <div>
-          <p className="text-sm font-medium uppercase tracking-[0.22em] text-[#00E5FF]">Knowledge Hub</p>
-          <h2 className="mt-3 text-4xl font-semibold tracking-tight">FM intelligence memory</h2>
-          <p className="mt-3 max-w-3xl text-base leading-7 text-[#94A3B8]">
-            TenderFlow uses this library to ground proposals, method statements, compliance, PPM, SLA, KPI, HSE, and executive outputs.
-          </p>
-        </div>
+        <WorkspaceHeader
+          eyebrow="Knowledge Hub"
+          title="FM intelligence memory"
+          subtitle="TenderFlow uses this library to ground proposals, method statements, compliance, PPM, SLA, KPI, HSE, and executive outputs."
+          actions={
+            <>
+              <ToolbarButton href="/organization">Organization</ToolbarButton>
+              <ToolbarButton href="/documents">Documents</ToolbarButton>
+            </>
+          }
+          meta={[
+            { label: "Tenders Learned", value: network?.tenders ?? 0, tone: "blue" },
+            { label: "Source Files", value: network?.tenderFiles ?? 0 },
+            { label: "Memory Chunks", value: network?.companyKnowledgeChunks ?? 0, tone: "green" },
+            { label: "Company Evidence", value: network?.companyFiles ?? 0, tone: "amber" },
+          ]}
+        />
+        <ViewsBar
+          views={[
+            { label: "Memory", href: "#memory", active: true, count: companyFiles.length },
+            { label: "Generated", href: "#generated", count: Object.keys(network?.generatedByKind ?? {}).length },
+            { label: "Signals", href: "#signals", count: (network?.complianceItems ?? 0) + (network?.riskItems ?? 0) },
+          ]}
+          right={<StatusChip tone="blue">Reusable knowledge</StatusChip>}
+        />
         <section className="grid gap-3 md:grid-cols-4">
           {[
             ["Tenders Learned", network?.tenders ?? 0],
@@ -48,11 +67,11 @@ export default async function KnowledgePage() {
             </Card>
           ))}
         </section>
-        <Card className="bg-[#0B1220]">
+        <Card id="memory" className="bg-[#0B1220]">
           <CompanyKnowledgeUploadForm />
         </Card>
 
-        <Card className="bg-[#0B1220]">
+        <Card id="generated" className="bg-[#0B1220]">
           <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.22em] text-[#00E5FF]">Organization AI Memory</p>
@@ -81,7 +100,7 @@ export default async function KnowledgePage() {
           )}
         </Card>
 
-        <Card className="bg-[#0B1220]">
+        <Card id="signals" className="bg-[#0B1220]">
           <div className="mb-5">
             <p className="text-xs uppercase tracking-[0.22em] text-[#00E5FF]">Document Knowledge Network</p>
             <h3 className="mt-2 text-xl font-semibold">Generated and reviewed tender memory</h3>

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
-import { z } from "zod";
 import { getPrisma, hasDatabaseUrl } from "@/lib/prisma";
 import {
   buildTenderStoragePath,
@@ -11,6 +10,7 @@ import {
 import {
   buildInitialTenderAnalysis,
   chunkDocumentText,
+  deriveTenderProfile,
   detectComplianceItems,
   detectRiskItems,
   extractDocumentText,
@@ -18,17 +18,6 @@ import {
 import { getCookieValue } from "@/lib/session";
 
 export const runtime = "nodejs";
-
-const tenderSchema = z.object({
-  tenderName: z.string().min(2),
-  clientName: z.string().min(2),
-  country: z.string().optional(),
-  location: z.string().optional(),
-  tenderCategory: z.string().optional(),
-  submissionDeadline: z.string().optional(),
-  contractDuration: z.string().optional(),
-  estimatedValue: z.string().optional(),
-});
 
 export async function POST(request: Request) {
   if (!hasDatabaseUrl()) {
@@ -56,24 +45,6 @@ export async function POST(request: Request) {
   }
 
   const formData = await request.formData();
-  const payload = tenderSchema.safeParse({
-    tenderName: formData.get("tenderName"),
-    clientName: formData.get("clientName"),
-    country: formData.get("country") || undefined,
-    location: formData.get("location") || undefined,
-    tenderCategory: formData.get("tenderCategory") || undefined,
-    submissionDeadline: formData.get("submissionDeadline") || undefined,
-    contractDuration: formData.get("contractDuration") || undefined,
-    estimatedValue: formData.get("estimatedValue") || undefined,
-  });
-
-  if (!payload.success) {
-    return NextResponse.json(
-      { error: "Invalid tender payload.", issues: payload.error.flatten().fieldErrors },
-      { status: 400 },
-    );
-  }
-
   const files = formData
     .getAll("files")
     .filter((file): file is File => file instanceof File && file.size > 0);
@@ -99,16 +70,8 @@ export async function POST(request: Request) {
     data: {
       organizationId,
       ownerId: userId,
-      name: payload.data.tenderName,
-      clientName: payload.data.clientName,
-      country: payload.data.country,
-      location: payload.data.location,
-      category: payload.data.tenderCategory,
-      contractDuration: payload.data.contractDuration,
-      submissionDeadline: payload.data.submissionDeadline
-        ? new Date(payload.data.submissionDeadline)
-        : undefined,
-      estimatedValue: payload.data.estimatedValue ? Number(payload.data.estimatedValue) : undefined,
+      name: buildInitialWorkspaceName(files.map((file) => file.name)),
+      clientName: "Client pending extraction",
       status: "PROCESSING",
       auditLogs: {
         create: {
@@ -210,9 +173,13 @@ export async function POST(request: Request) {
 
     const combinedText = uploadedFiles.map((file) => file.extractedText).filter(Boolean).join("\n\n");
     const chunkCount = uploadedFiles.reduce((total, file) => total + file.chunks.length, 0);
+    const derivedProfile = deriveTenderProfile({
+      fileNames: uploadedFiles.map((file) => file.fileName),
+      combinedText,
+    });
     const analysis = buildInitialTenderAnalysis({
-      tenderName: tender.name,
-      clientName: tender.clientName,
+      tenderName: derivedProfile.name,
+      clientName: derivedProfile.clientName,
       combinedText,
       fileCount: uploadedFiles.length,
       chunkCount,
@@ -223,6 +190,14 @@ export async function POST(request: Request) {
     await prisma.tender.update({
       where: { id: tender.id },
       data: {
+        name: derivedProfile.name,
+        clientName: derivedProfile.clientName,
+        country: derivedProfile.country,
+        location: derivedProfile.location,
+        category: derivedProfile.category,
+        contractDuration: derivedProfile.contractDuration,
+        submissionDeadline: derivedProfile.submissionDeadline,
+        estimatedValue: derivedProfile.estimatedValue,
         status: chunkCount > 0 ? "ANALYZED" : "UPLOADED",
         analysis: {
           create: analysis,
@@ -240,6 +215,10 @@ export async function POST(request: Request) {
               chunkCount,
               complianceSignals: complianceItems.length,
               riskSignals: riskItems.length,
+              derivedProfile: {
+                confidence: derivedProfile.confidence,
+                signals: derivedProfile.signals,
+              },
             },
           },
         },
@@ -269,4 +248,16 @@ export async function POST(request: Request) {
 
 function toPrismaJson(value: Record<string, unknown>): Prisma.InputJsonValue {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
+
+function buildInitialWorkspaceName(fileNames: string[]) {
+  const firstName = fileNames[0] ?? "Tender Workspace";
+
+  return firstName
+    .replace(/\.[^.]+$/, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+    .slice(0, 120);
 }

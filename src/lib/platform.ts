@@ -117,6 +117,7 @@ export async function getTenderWorkspaces(organizationId?: string) {
         generatedFiles: {
           select: {
             id: true,
+            kind: true,
             reviewStatus: true,
           },
         },
@@ -130,12 +131,139 @@ export async function getTenderWorkspaces(organizationId?: string) {
           select: {
             winProbability: true,
             recommendation: true,
+            qualificationScore: true,
+            scopeBreakdown: true,
+          },
+        },
+        complianceItems: {
+          select: {
+            id: true,
+            status: true,
+            priority: true,
+          },
+        },
+        riskItems: {
+          select: {
+            id: true,
+            score: true,
+            category: true,
           },
         },
       },
     });
   } catch {
     return [];
+  }
+}
+
+export async function getExecutiveCopilot(organizationId?: string) {
+  if (!hasDatabaseUrl()) {
+    return null;
+  }
+
+  try {
+    const prisma = getPrisma();
+    const tenders = await prisma.tender.findMany({
+      where: organizationId ? { organizationId } : undefined,
+      select: {
+        id: true,
+        status: true,
+        estimatedValue: true,
+        analysis: {
+          select: {
+            winProbability: true,
+            recommendation: true,
+          },
+        },
+        generatedFiles: {
+          select: {
+            reviewStatus: true,
+          },
+        },
+        riskItems: {
+          select: {
+            score: true,
+          },
+        },
+      },
+    });
+    const pipelineValue = tenders.reduce((total, tender) => total + Number(tender.estimatedValue ?? 0), 0);
+    const expectedRevenue = tenders.reduce(
+      (total, tender) => total + Number(tender.estimatedValue ?? 0) * ((tender.analysis?.winProbability ?? 0) / 100),
+      0,
+    );
+    const workspacesWithWin = tenders.filter((tender) => typeof tender.analysis?.winProbability === "number");
+    const winForecast =
+      workspacesWithWin.length === 0
+        ? 0
+        : Math.round(workspacesWithWin.reduce((total, tender) => total + (tender.analysis?.winProbability ?? 0), 0) / workspacesWithWin.length);
+
+    return {
+      pipelineValue: formatCurrency(pipelineValue),
+      expectedRevenue: formatCurrency(expectedRevenue),
+      activeWorkspaces: tenders.filter((tender) => !["SUBMITTED", "WON", "LOST", "ARCHIVED"].includes(tender.status)).length,
+      highRiskSubmissions: tenders.filter((tender) => tender.riskItems.some((risk) => risk.score >= 4)).length,
+      missingApprovals: tenders.reduce(
+        (total, tender) => total + tender.generatedFiles.filter((file) => !["APPROVED", "FINAL"].includes(file.reviewStatus)).length,
+        0,
+      ),
+      winForecast,
+      goRecommendations: tenders.filter((tender) => tender.analysis?.recommendation === "GO").length,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function getKnowledgeNetwork(organizationId?: string) {
+  if (!hasDatabaseUrl()) {
+    return null;
+  }
+
+  try {
+    const prisma = getPrisma();
+    const where = organizationId ? { organizationId } : undefined;
+    const [
+      tenders,
+      generatedFiles,
+      complianceItems,
+      riskItems,
+      chunks,
+      tenderFiles,
+      companyFiles,
+      suppliers,
+      users,
+    ] = await Promise.all([
+      prisma.tender.count({ where }),
+      prisma.generatedFile.groupBy({
+        by: ["kind"],
+        where: organizationId ? { tender: { organizationId } } : undefined,
+        _count: { _all: true },
+      }),
+      prisma.complianceItem.count({ where: organizationId ? { tender: { organizationId } } : undefined }),
+      prisma.riskItem.count({ where: organizationId ? { tender: { organizationId } } : undefined }),
+      prisma.tenderDocumentChunk.count({ where: organizationId ? { tender: { organizationId } } : undefined }),
+      prisma.tenderFile.count({ where }),
+      prisma.tenderFile.count({ where: organizationId ? { organizationId, purpose: "COMPANY_DOCUMENT" } : { purpose: "COMPANY_DOCUMENT" } }),
+      prisma.supplier.count({ where }),
+      prisma.user.count({ where }),
+    ]);
+
+    const generatedByKind = Object.fromEntries(generatedFiles.map((file) => [file.kind, file._count._all]));
+
+    return {
+      tenders,
+      tenderFiles,
+      companyFiles,
+      chunks,
+      complianceItems,
+      riskItems,
+      suppliers,
+      users,
+      generatedByKind,
+    };
+  } catch {
+    return null;
   }
 }
 

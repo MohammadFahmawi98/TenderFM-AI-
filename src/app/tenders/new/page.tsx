@@ -7,12 +7,14 @@ export default function NewTenderPage() {
     <AppShell>
       <PageSection>
         <div>
-          <h2 className="text-2xl font-semibold">Upload Tender</h2>
-          <p className="mt-1 text-sm text-[#94A3B8]">
-            Create a real tender record from uploaded documents. Files are stored in the private Supabase Storage bucket.
+          <p className="text-sm font-medium uppercase tracking-[0.22em] text-[#00E5FF]">RFP Intake</p>
+          <h2 className="mt-3 text-4xl font-semibold tracking-tight">Upload the tender package</h2>
+          <p className="mt-3 max-w-3xl text-base leading-7 text-[#94A3B8]">
+            Create the workspace from source documents only. TenderFlow extracts the tender profile, requirements, intelligence, risks,
+            and readiness signals from the uploaded files.
           </p>
         </div>
-        <Card>
+        <Card className="bg-[#0B1220]">
           <TenderUploadForm />
         </Card>
       </PageSection>

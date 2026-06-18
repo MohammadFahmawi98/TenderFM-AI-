@@ -27,9 +27,9 @@ export default function HomePage() {
             >
               <div>
                 <p className="text-xs uppercase tracking-[0.22em] text-[#00E5FF]">Primary Upload Area</p>
-                <h3 className="mt-4 text-3xl font-semibold">Drop RFP files here</h3>
+                <h3 className="mt-4 text-3xl font-semibold">Upload RFP files</h3>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-[#94A3B8]">
-                  Multi-file upload is ready. Folder upload and drag-and-drop are staged for the browser upload layer.
+                  The workspace is created from the documents, then TenderFlow extracts requirements, risk, compliance, effort, and readiness.
                 </p>
               </div>
               <div>
@@ -68,7 +68,7 @@ export default function HomePage() {
           <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.22em] text-[#00E5FF]">AI Bid Department</p>
-              <h3 className="mt-2 text-2xl font-semibold">Specialized FM agents working together</h3>
+              <h3 className="mt-2 text-2xl font-semibold">Specialized FM agents ready for the uploaded tender</h3>
             </div>
             <Link href="/workspace" className="text-sm font-semibold text-[#3B82F6]">
               View active workspace

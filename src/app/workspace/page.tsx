@@ -7,6 +7,7 @@ import { WorkspaceTaskForm } from "@/components/workspace-task-form";
 import { Card, EmptyState, PageSection } from "@/components/ui";
 import { tenderAgents } from "@/lib/agents";
 import { getLatestWorkspaceTender } from "@/lib/platform";
+import { calculateSubmissionReadiness } from "@/lib/readiness";
 
 const workspaceTabs = ["OVERVIEW", "REQUIREMENTS", "AI AGENTS", "DOCUMENTS", "COMPLIANCE", "COMMERCIAL", "SUBMISSION PACKAGE"];
 
@@ -16,12 +17,14 @@ export default async function WorkspacePage() {
   const tender = await getLatestWorkspaceTender(organizationId);
   const extractedFiles = tender?.files.filter((file) => file.extractionStatus === "COMPLETED") ?? [];
   const chunkCount = tender?.files.reduce((total, file) => total + file.chunks.length, 0) ?? 0;
-  const approvedDocuments =
-    tender?.generatedFiles.filter((file) => file.reviewStatus === "APPROVED" || file.reviewStatus === "FINAL").length ?? 0;
-  const completedTasks =
-    tender?.workspaceTasks.filter((task) => task.status === "COMPLETED" || task.status === "APPROVED").length ?? 0;
-  const readinessItems = [Boolean(tender?.files.length), chunkCount > 0, completedTasks > 0, approvedDocuments > 0];
-  const readiness = Math.round((readinessItems.filter(Boolean).length / readinessItems.length) * 100);
+  const readiness = tender ? calculateSubmissionReadiness(tender) : null;
+  const scopeBreakdown = tender?.analysis?.scopeBreakdown as
+    | {
+        complexity?: string;
+        effort?: { proposalHours?: number; reviewHours?: number; commercialHours?: number; totalHours?: number };
+        goNoGoReasoning?: Array<{ factor: string; score: number; evidence?: string[] }>;
+      }
+    | null;
 
   return (
     <AppShell>
@@ -66,7 +69,7 @@ export default async function WorkspacePage() {
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                   <div className="rounded-md bg-[#050816] p-3">
                     <p className="text-xs text-[#94A3B8]">Readiness</p>
-                    <p className="mt-1 text-xl font-semibold text-[#10B981]">{readiness}%</p>
+                    <p className="mt-1 text-xl font-semibold text-[#10B981]">{readiness?.score ?? 0}%</p>
                   </div>
                   <div className="rounded-md bg-[#050816] p-3">
                     <p className="text-xs text-[#94A3B8]">Win Probability</p>
@@ -76,6 +79,24 @@ export default async function WorkspacePage() {
                     <p className="text-xs text-[#94A3B8]">Documents</p>
                     <p className="mt-1 text-xl font-semibold">{tender.generatedFiles.length}</p>
                   </div>
+                </div>
+              </div>
+              <div className="mt-6 grid gap-3 border-t border-white/[0.06] pt-5 md:grid-cols-4">
+                <div className="rounded-md bg-[#050816] p-3">
+                  <p className="text-xs text-[#94A3B8]">Go / No-Go</p>
+                  <p className="mt-1 text-lg font-semibold">{tender.analysis?.recommendation.replaceAll("_", " ") ?? "Pending"}</p>
+                </div>
+                <div className="rounded-md bg-[#050816] p-3">
+                  <p className="text-xs text-[#94A3B8]">Qualification</p>
+                  <p className="mt-1 text-lg font-semibold">{tender.analysis?.qualificationScore ?? "-"}%</p>
+                </div>
+                <div className="rounded-md bg-[#050816] p-3">
+                  <p className="text-xs text-[#94A3B8]">Complexity</p>
+                  <p className="mt-1 text-lg font-semibold">{scopeBreakdown?.complexity ?? "Pending"}</p>
+                </div>
+                <div className="rounded-md bg-[#050816] p-3">
+                  <p className="text-xs text-[#94A3B8]">Effort</p>
+                  <p className="mt-1 text-lg font-semibold">{scopeBreakdown?.effort?.totalHours ? `${scopeBreakdown.effort.totalHours}h` : "Pending"}</p>
                 </div>
               </div>
               <div className="mt-6 flex gap-2 overflow-x-auto border-t border-white/[0.06] pt-4">
@@ -136,6 +157,20 @@ export default async function WorkspacePage() {
                       {tender.analysis?.executiveSummary ?? "Analysis has not been generated yet."}
                     </p>
                   </div>
+
+                  {scopeBreakdown?.goNoGoReasoning?.length ? (
+                    <div className="grid gap-3 lg:grid-cols-5">
+                      {scopeBreakdown.goNoGoReasoning.map((item) => (
+                        <div key={item.factor} className="rounded-lg border border-[#162033] bg-[#050816] p-4">
+                          <p className="text-xs uppercase tracking-[0.16em] text-[#94A3B8]">{item.factor}</p>
+                          <p className="mt-3 text-2xl font-semibold">{item.score}%</p>
+                          <p className="mt-2 line-clamp-2 text-xs text-[#64748B]">
+                            {item.evidence?.length ? item.evidence.join(", ") : "No explicit source signal yet"}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
 
                   {tender.files.flatMap((file) =>
                     file.chunks.map((chunk) => (
@@ -232,8 +267,12 @@ export default async function WorkspacePage() {
                   </div>
                   <div className="rounded-md border border-[#162033] bg-[#050816] p-3">
                     <p className="text-xs uppercase tracking-[0.18em] text-[#10B981]">Export Readiness</p>
-                    <p className="mt-2 text-2xl font-semibold">{readiness}%</p>
-                    <p className="mt-2 text-xs text-[#94A3B8]">Checks source files, extraction, task progress, and approved documents.</p>
+                    <p className="mt-2 text-2xl font-semibold">{readiness?.score ?? 0}%</p>
+                    <p className="mt-2 text-xs text-[#94A3B8]">
+                      Compliance {readiness?.compliance ?? 0}% - Technical {readiness?.technicalProposal ?? 0}% - Commercial{" "}
+                      {readiness?.commercialProposal ?? 0}% - Approvals {readiness?.approvals ?? 0}% - Attachments{" "}
+                      {readiness?.attachments ?? 0}%
+                    </p>
                   </div>
                 </div>
               </Card>

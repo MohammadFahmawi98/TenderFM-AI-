@@ -1,24 +1,28 @@
+import { cookies } from "next/headers";
 import { AppShell } from "@/components/app-shell";
 import { Card, PageSection } from "@/components/ui";
+import { getKnowledgeNetwork } from "@/lib/platform";
 
-const libraries = [
-  "Technical Proposals",
-  "Method Statements",
-  "SOPs",
-  "PPM Libraries",
-  "SLA Libraries",
-  "KPI Libraries",
-  "HSE Plans",
-  "Risk Registers",
-  "Mobilization Plans",
-  "Company Profiles",
-  "Certifications",
-  "Past Projects",
-  "References",
-  "Case Studies",
-];
+const documentMemory = [
+  ["Technical Proposals", "TECHNICAL_PROPOSAL"],
+  ["Commercial Proposals", "COMMERCIAL_PROPOSAL"],
+  ["Compliance Matrices", "COMPLIANCE_MATRIX"],
+  ["Manpower Plans", "MANPOWER_PLAN"],
+  ["PPM Schedules", "PPM_SCHEDULE"],
+  ["SLA Matrices", "SLA_MATRIX"],
+  ["KPI Matrices", "KPI_MATRIX"],
+  ["Risk Registers", "RISK_REGISTER"],
+  ["HSE Plans", "HSE_PLAN"],
+  ["Method Statements", "METHOD_STATEMENT"],
+  ["Executive Summaries", "EXECUTIVE_SUMMARY"],
+  ["Presentations", "POWERPOINT_PRESENTATION"],
+] as const;
 
-export default function KnowledgePage() {
+export default async function KnowledgePage() {
+  const cookieStore = await cookies();
+  const organizationId = cookieStore.get("tenderflow_organization_id")?.value;
+  const network = await getKnowledgeNetwork(organizationId);
+
   return (
     <AppShell>
       <PageSection>
@@ -29,12 +33,54 @@ export default function KnowledgePage() {
             TenderFlow uses this library to ground proposals, method statements, compliance, PPM, SLA, KPI, HSE, and executive outputs.
           </p>
         </div>
+        <section className="grid gap-3 md:grid-cols-4">
+          {[
+            ["Tenders Learned", network?.tenders ?? 0],
+            ["Source Files", network?.tenderFiles ?? 0],
+            ["Indexed Chunks", network?.chunks ?? 0],
+            ["Team Members", network?.users ?? 0],
+          ].map(([label, value]) => (
+            <Card key={label} className="bg-[#0B1220]">
+              <p className="text-xs uppercase tracking-[0.18em] text-[#94A3B8]">{label}</p>
+              <p className="mt-3 text-3xl font-semibold">{value}</p>
+            </Card>
+          ))}
+        </section>
         <Card className="bg-[#0B1220]">
+          <div className="mb-5">
+            <p className="text-xs uppercase tracking-[0.22em] text-[#00E5FF]">Document Knowledge Network</p>
+            <h3 className="mt-2 text-xl font-semibold">Generated and reviewed tender memory</h3>
+          </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {libraries.map((item) => (
-              <div key={item} className="rounded-lg border border-[#162033] bg-[#050816] p-4">
-                <p className="text-sm font-semibold">{item}</p>
-                <p className="mt-2 text-xs leading-5 text-[#94A3B8]">No real records yet</p>
+            {documentMemory.map(([label, kind]) => {
+              const count = network?.generatedByKind[kind] ?? 0;
+              return (
+                <div key={kind} className="rounded-lg border border-[#162033] bg-[#050816] p-4">
+                  <p className="text-sm font-semibold">{label}</p>
+                  <p className="mt-2 text-2xl font-semibold">{count}</p>
+                  <p className="mt-2 text-xs leading-5 text-[#94A3B8]">
+                    {count > 0 ? "Available from real workspace outputs" : "Not uploaded or generated yet"}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+
+        <Card className="bg-[#0B1220]">
+          <div className="grid gap-3 md:grid-cols-4">
+            {[
+              ["Compliance Responses", network?.complianceItems ?? 0],
+              ["Risk Patterns", network?.riskItems ?? 0],
+              ["Supplier Records", network?.suppliers ?? 0],
+              ["Company Evidence", network?.companyFiles ?? 0],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-lg border border-[#162033] bg-[#050816] p-4">
+                <p className="text-sm font-semibold">{label}</p>
+                <p className="mt-2 text-2xl font-semibold">{value}</p>
+                <p className="mt-2 text-xs leading-5 text-[#94A3B8]">
+                  {Number(value) > 0 ? "Connected to organization memory" : "Not uploaded yet"}
+                </p>
               </div>
             ))}
           </div>

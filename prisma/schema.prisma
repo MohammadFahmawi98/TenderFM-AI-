@@ -150,6 +150,7 @@ model UserRole {
   role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@id([userId, roleId])
+  @@index([roleId])
 }
 
 model RolePermission {
@@ -159,6 +160,7 @@ model RolePermission {
   permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
   @@id([roleId, permissionId])
+  @@index([permissionId])
 }
 
 model Tender {
@@ -193,6 +195,7 @@ model Tender {
   auditLogs          AuditLog[]
 
   @@index([organizationId, status])
+  @@index([ownerId])
   @@index([submissionDeadline])
 }
 
@@ -282,6 +285,8 @@ model ManpowerPlan {
   createdAt DateTime        @default(now())
   tender    Tender          @relation(fields: [tenderId], references: [id], onDelete: Cascade)
   lines     ManpowerLine[]
+
+  @@index([tenderId])
 }
 
 model ManpowerLine {
@@ -297,6 +302,8 @@ model ManpowerLine {
   uniformCost        Decimal      @default(0) @db.Decimal(12, 2)
   overtimeAllowance  Decimal      @default(0) @db.Decimal(12, 2)
   manpowerPlan       ManpowerPlan @relation(fields: [manpowerPlanId], references: [id], onDelete: Cascade)
+
+  @@index([manpowerPlanId])
 }
 
 model CostEstimate {
@@ -311,6 +318,8 @@ model CostEstimate {
   createdAt       DateTime       @default(now())
   tender          Tender         @relation(fields: [tenderId], references: [id], onDelete: Cascade)
   lines           EstimateLine[]
+
+  @@index([tenderId])
 }
 
 model EstimateLine {
@@ -323,6 +332,8 @@ model EstimateLine {
   unitCost       Decimal      @db.Decimal(12, 2)
   totalCost      Decimal      @db.Decimal(14, 2)
   costEstimate   CostEstimate @relation(fields: [costEstimateId], references: [id], onDelete: Cascade)
+
+  @@index([costEstimateId])
 }
 
 model Proposal {
@@ -335,6 +346,8 @@ model Proposal {
   updatedAt      DateTime        @updatedAt
   tender         Tender          @relation(fields: [tenderId], references: [id], onDelete: Cascade)
   generatedFiles GeneratedFile[]
+
+  @@index([tenderId])
 }
 
 model GeneratedFile {
@@ -347,6 +360,9 @@ model GeneratedFile {
   createdAt  DateTime          @default(now())
   tender     Tender            @relation(fields: [tenderId], references: [id], onDelete: Cascade)
   proposal   Proposal?         @relation(fields: [proposalId], references: [id])
+
+  @@index([tenderId])
+  @@index([proposalId])
 }
 
 model Supplier {
@@ -358,6 +374,8 @@ model Supplier {
   contactPhone   String?
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   subcontractors Subcontractor[]
+
+  @@index([organizationId])
 }
 
 model Subcontractor {
@@ -366,6 +384,8 @@ model Subcontractor {
   scope      String
   location   String?
   supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([supplierId])
 }
 
 model ChatConversation {
@@ -375,6 +395,8 @@ model ChatConversation {
   createdAt DateTime      @default(now())
   tender    Tender        @relation(fields: [tenderId], references: [id], onDelete: Cascade)
   messages  ChatMessage[]
+
+  @@index([tenderId])
 }
 
 model ChatMessage {
@@ -388,6 +410,9 @@ model ChatMessage {
   createdAt      DateTime         @default(now())
   conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   user           User?            @relation(fields: [userId], references: [id])
+
+  @@index([conversationId])
+  @@index([userId])
 }
 
 model Notification {
@@ -398,6 +423,8 @@ model Notification {
   readAt    DateTime?
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model AuditLog {
@@ -415,6 +442,8 @@ model AuditLog {
   tender         Tender?       @relation(fields: [tenderId], references: [id])
 
   @@index([organizationId, createdAt])
+  @@index([userId])
+  @@index([tenderId])
 }
 
 model Subscription {

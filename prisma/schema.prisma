@@ -1,0 +1,427 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrganizationType {
+  FACILITY_MANAGEMENT
+  CLEANING
+  LANDSCAPING
+  MEP_CONTRACTOR
+  HVAC_CONTRACTOR
+  SECURITY
+  PEST_CONTROL
+  GOVERNMENT_ENTITY
+  PROPERTY_MANAGEMENT
+}
+
+enum TenderStatus {
+  DRAFT
+  UPLOADED
+  PROCESSING
+  ANALYZED
+  QUALIFIED
+  NO_GO
+  IN_ESTIMATION
+  IN_PROPOSAL
+  SUBMITTED
+  WON
+  LOST
+  ARCHIVED
+}
+
+enum FilePurpose {
+  TENDER_DOCUMENT
+  COMPANY_DOCUMENT
+  GENERATED_EXPORT
+  CERTIFICATE
+  DRAWING
+  BOQ
+  ASSET_REGISTER
+  ADDENDUM
+}
+
+enum ComplianceStatus {
+  AVAILABLE
+  MISSING
+  PARTIAL
+  NOT_APPLICABLE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum RiskCategory {
+  COMMERCIAL
+  TECHNICAL
+  FINANCIAL
+  OPERATIONAL
+  COMPLIANCE
+  RESOURCE
+}
+
+enum Recommendation {
+  GO
+  GO_WITH_CONDITIONS
+  NO_GO
+  REVIEW_REQUIRED
+}
+
+enum GeneratedFileType {
+  PDF
+  DOCX
+  XLSX
+  PPTX
+  ZIP
+}
+
+enum ChatRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+model Organization {
+  id           String           @id @default(cuid())
+  name         String
+  type         OrganizationType
+  country      String?
+  website      String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  users        User[]
+  tenders      Tender[]
+  files        TenderFile[]
+  suppliers    Supplier[]
+  auditLogs    AuditLog[]
+  subscription Subscription?
+
+  @@index([name])
+}
+
+model User {
+  id             String         @id @default(cuid())
+  organizationId String
+  email          String         @unique
+  firstName      String
+  lastName       String
+  phone          String?
+  title          String?
+  passwordHash   String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  roles          UserRole[]
+  tenders        Tender[]       @relation("TenderOwner")
+  chatMessages   ChatMessage[]
+  notifications  Notification[]
+  auditLogs      AuditLog[]
+
+  @@index([organizationId])
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  description String?
+  users       UserRole[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  key         String           @unique
+  description String?
+  roles       RolePermission[]
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model Tender {
+  id                 String             @id @default(cuid())
+  organizationId     String
+  ownerId            String?
+  tenderNumber       String?
+  name               String
+  clientName         String
+  country            String?
+  location           String?
+  category           String?
+  submissionDeadline DateTime?
+  contractDuration   String?
+  estimatedValue     Decimal?           @db.Decimal(14, 2)
+  currency           String             @default("AED")
+  status             TenderStatus       @default(DRAFT)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  organization       Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner              User?              @relation("TenderOwner", fields: [ownerId], references: [id])
+  files              TenderFile[]
+  analysis           TenderAnalysis?
+  complianceItems    ComplianceItem[]
+  riskItems          RiskItem[]
+  assets             Asset[]
+  manpowerPlans      ManpowerPlan[]
+  costEstimates      CostEstimate[]
+  proposals          Proposal[]
+  generatedFiles     GeneratedFile[]
+  chatConversations  ChatConversation[]
+  auditLogs          AuditLog[]
+
+  @@index([organizationId, status])
+  @@index([submissionDeadline])
+}
+
+model TenderFile {
+  id             String       @id @default(cuid())
+  organizationId String
+  tenderId       String?
+  purpose        FilePurpose
+  fileName       String
+  mimeType       String
+  sizeBytes      Int
+  storageKey     String
+  checksum       String?
+  uploadedAt     DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tender         Tender?      @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, purpose])
+  @@index([tenderId])
+}
+
+model TenderAnalysis {
+  id                  String         @id @default(cuid())
+  tenderId            String         @unique
+  executiveSummary    String?
+  technicalSummary    String?
+  commercialSummary   String?
+  scopeBreakdown      Json?
+  qualificationScore  Int?
+  recommendation      Recommendation @default(REVIEW_REQUIRED)
+  winProbability      Int?
+  sourceMap           Json?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  tender              Tender         @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+}
+
+model ComplianceItem {
+  id          String           @id @default(cuid())
+  tenderId    String
+  requirement String
+  status      ComplianceStatus @default(MISSING)
+  priority    Priority         @default(MEDIUM)
+  owner       String?
+  action      String?
+  source      String?
+  pageRef     String?
+  confidence  Int?
+  tender      Tender           @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+
+  @@index([tenderId, status])
+}
+
+model RiskItem {
+  id          String       @id @default(cuid())
+  tenderId    String
+  category    RiskCategory
+  title       String
+  description String?
+  score       Int
+  mitigation  String?
+  source      String?
+  pageRef     String?
+  tender      Tender       @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+
+  @@index([tenderId, category])
+}
+
+model Asset {
+  id             String  @id @default(cuid())
+  tenderId       String
+  assetType      String
+  name           String
+  location       String?
+  quantity       Int     @default(1)
+  lifecycleNotes String?
+  tender         Tender  @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+
+  @@index([tenderId, assetType])
+}
+
+model ManpowerPlan {
+  id        String          @id @default(cuid())
+  tenderId  String
+  name      String
+  notes     String?
+  createdAt DateTime        @default(now())
+  tender    Tender          @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  lines     ManpowerLine[]
+}
+
+model ManpowerLine {
+  id                 String       @id @default(cuid())
+  manpowerPlanId     String
+  roleName           String
+  quantity           Int
+  monthlySalary      Decimal      @db.Decimal(12, 2)
+  accommodationCost  Decimal      @default(0) @db.Decimal(12, 2)
+  transportCost      Decimal      @default(0) @db.Decimal(12, 2)
+  visaCost           Decimal      @default(0) @db.Decimal(12, 2)
+  insuranceCost      Decimal      @default(0) @db.Decimal(12, 2)
+  uniformCost        Decimal      @default(0) @db.Decimal(12, 2)
+  overtimeAllowance  Decimal      @default(0) @db.Decimal(12, 2)
+  manpowerPlan       ManpowerPlan @relation(fields: [manpowerPlanId], references: [id], onDelete: Cascade)
+}
+
+model CostEstimate {
+  id              String         @id @default(cuid())
+  tenderId        String
+  name            String
+  currency        String         @default("AED")
+  overheadPercent Decimal        @default(0) @db.Decimal(5, 2)
+  profitPercent   Decimal        @default(0) @db.Decimal(5, 2)
+  vatPercent      Decimal        @default(5) @db.Decimal(5, 2)
+  finalBidPrice   Decimal?       @db.Decimal(14, 2)
+  createdAt       DateTime       @default(now())
+  tender          Tender         @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  lines           EstimateLine[]
+}
+
+model EstimateLine {
+  id             String       @id @default(cuid())
+  costEstimateId String
+  category       String
+  description    String
+  quantity       Decimal      @db.Decimal(12, 2)
+  unit           String
+  unitCost       Decimal      @db.Decimal(12, 2)
+  totalCost      Decimal      @db.Decimal(14, 2)
+  costEstimate   CostEstimate @relation(fields: [costEstimateId], references: [id], onDelete: Cascade)
+}
+
+model Proposal {
+  id             String          @id @default(cuid())
+  tenderId       String
+  title          String
+  status         String          @default("draft")
+  sections       Json?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  tender         Tender          @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  generatedFiles GeneratedFile[]
+}
+
+model GeneratedFile {
+  id         String            @id @default(cuid())
+  tenderId   String
+  proposalId String?
+  type       GeneratedFileType
+  fileName   String
+  storageKey String
+  createdAt  DateTime          @default(now())
+  tender     Tender            @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  proposal   Proposal?         @relation(fields: [proposalId], references: [id])
+}
+
+model Supplier {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String
+  category       String?
+  contactEmail   String?
+  contactPhone   String?
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subcontractors Subcontractor[]
+}
+
+model Subcontractor {
+  id         String   @id @default(cuid())
+  supplierId String
+  scope      String
+  location   String?
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+}
+
+model ChatConversation {
+  id        String        @id @default(cuid())
+  tenderId  String
+  title     String
+  createdAt DateTime      @default(now())
+  tender    Tender        @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  messages  ChatMessage[]
+}
+
+model ChatMessage {
+  id             String           @id @default(cuid())
+  conversationId String
+  userId         String?
+  role           ChatRole
+  content        String
+  citations      Json?
+  confidence     Int?
+  createdAt      DateTime         @default(now())
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User?            @relation(fields: [userId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  body      String?
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id             String        @id @default(cuid())
+  organizationId String
+  userId         String?
+  tenderId       String?
+  action         String
+  entityType     String
+  entityId       String?
+  metadata       Json?
+  createdAt      DateTime      @default(now())
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User?         @relation(fields: [userId], references: [id])
+  tender         Tender?       @relation(fields: [tenderId], references: [id])
+
+  @@index([organizationId, createdAt])
+}
+
+model Subscription {
+  id             String       @id @default(cuid())
+  organizationId String       @unique
+  plan           String
+  status         String
+  renewsAt       DateTime?
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}

@@ -107,6 +107,19 @@ export async function getLatestWorkspaceTender(organizationId?: string) {
       where: organizationId ? { organizationId } : undefined,
       orderBy: { createdAt: "desc" },
       include: {
+        organization: {
+          include: {
+            users: {
+              orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+        },
         files: {
           orderBy: { uploadedAt: "desc" },
           include: {
@@ -127,10 +140,161 @@ export async function getLatestWorkspaceTender(organizationId?: string) {
         },
         generatedFiles: {
           orderBy: { createdAt: "desc" },
+          include: {
+            reviewer: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+            versions: {
+              orderBy: { version: "desc" },
+              take: 3,
+            },
+            comments: {
+              orderBy: { createdAt: "desc" },
+              take: 3,
+              include: {
+                author: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
+                  },
+                },
+              },
+            },
+          },
           take: 8,
+        },
+        workspaceTasks: {
+          orderBy: [{ status: "asc" }, { dueDate: "asc" }, { createdAt: "desc" }],
+          take: 10,
+          include: {
+            assignee: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+            relatedFile: {
+              select: {
+                id: true,
+                fileName: true,
+                displayName: true,
+              },
+            },
+            generatedFile: {
+              select: {
+                id: true,
+                fileName: true,
+                title: true,
+              },
+            },
+          },
+        },
+        documentComments: {
+          orderBy: { createdAt: "desc" },
+          take: 8,
+          include: {
+            author: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
+            tenderFile: {
+              select: {
+                id: true,
+                fileName: true,
+                displayName: true,
+              },
+            },
+            generatedFile: {
+              select: {
+                id: true,
+                fileName: true,
+                title: true,
+              },
+            },
+          },
+        },
+        activityEvents: {
+          orderBy: { createdAt: "desc" },
+          take: 10,
         },
       },
     });
+  } catch {
+    return null;
+  }
+}
+
+export async function getDocumentLibrary(organizationId?: string) {
+  if (!hasDatabaseUrl()) {
+    return null;
+  }
+
+  try {
+    const prisma = getPrisma();
+    const tender = await prisma.tender.findFirst({
+      where: organizationId ? { organizationId } : undefined,
+      orderBy: { createdAt: "desc" },
+      include: {
+        generatedFiles: {
+          orderBy: { updatedAt: "desc" },
+          include: {
+            reviewer: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
+            versions: {
+              orderBy: { version: "desc" },
+              take: 5,
+            },
+            comments: {
+              orderBy: { createdAt: "desc" },
+              take: 5,
+              include: {
+                author: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        workspaceTasks: {
+          where: {
+            generatedFileId: { not: null },
+          },
+          orderBy: { updatedAt: "desc" },
+          take: 10,
+          include: {
+            assignee: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const integrations = organizationId
+      ? await prisma.integrationConnection.findMany({
+          where: { organizationId },
+          orderBy: { provider: "asc" },
+        })
+      : [];
+
+    return { tender, integrations };
   } catch {
     return null;
   }

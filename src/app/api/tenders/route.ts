@@ -15,6 +15,7 @@ import {
   detectRiskItems,
   extractDocumentText,
 } from "@/lib/document-extraction";
+import { getCookieValue } from "@/lib/session";
 
 export const runtime = "nodejs";
 
@@ -264,14 +265,6 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
-}
-
-function getCookieValue(cookieHeader: string | null, key: string) {
-  return cookieHeader
-    ?.split(";")
-    .map((cookie) => cookie.trim())
-    .find((cookie) => cookie.startsWith(`${key}=`))
-    ?.split("=")[1];
 }
 
 function toPrismaJson(value: Record<string, unknown>): Prisma.InputJsonValue {

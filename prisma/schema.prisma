@@ -52,6 +52,19 @@ enum ExtractionStatus {
   UNSUPPORTED
 }
 
+enum TenderFileCategory {
+  RFP_MAIN_DOCUMENT
+  BOQ
+  TECHNICAL_SPECIFICATION
+  CONTRACT_CONDITIONS
+  DRAWINGS
+  APPENDICES
+  COMPLIANCE_DOCUMENTS
+  PRICING_DOCUMENTS
+  CLIENT_FORMS
+  OTHER
+}
+
 enum ComplianceStatus {
   AVAILABLE
   MISSING
@@ -88,6 +101,60 @@ enum GeneratedFileType {
   XLSX
   PPTX
   ZIP
+}
+
+enum GeneratedDocumentKind {
+  TECHNICAL_PROPOSAL
+  COMMERCIAL_PROPOSAL
+  COMPLIANCE_MATRIX
+  MANPOWER_PLAN
+  PPM_SCHEDULE
+  SLA_MATRIX
+  KPI_MATRIX
+  RISK_REGISTER
+  HSE_PLAN
+  METHOD_STATEMENT
+  EXECUTIVE_SUMMARY
+  POWERPOINT_PRESENTATION
+  EXCEL_COST_SHEET
+  SUBMISSION_PACKAGE
+}
+
+enum ReviewStatus {
+  DRAFT
+  AI_GENERATED
+  IN_REVIEW
+  CHANGES_REQUESTED
+  APPROVED
+  FINAL
+  REJECTED
+}
+
+enum WorkspaceTaskStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  APPROVED
+  BLOCKED
+  COMPLETED
+}
+
+enum IntegrationProvider {
+  GOOGLE_DRIVE
+  MICROSOFT_365
+  GMAIL
+  OUTLOOK
+  SLACK
+  MICROSOFT_TEAMS
+  CALENDAR
+  SUPABASE
+  OPENAI
+}
+
+enum IntegrationStatus {
+  NOT_CONNECTED
+  CONNECTED
+  NEEDS_ATTENTION
 }
 
 enum ChatRole {
@@ -131,6 +198,10 @@ model User {
   chatMessages   ChatMessage[]
   notifications  Notification[]
   auditLogs      AuditLog[]
+  assignedTasks  WorkspaceTask[] @relation("TaskAssignee")
+  createdTasks   WorkspaceTask[] @relation("TaskCreator")
+  documentComments DocumentComment[]
+  reviewedDocuments GeneratedFile[] @relation("DocumentReviewer")
 
   @@index([organizationId])
 }
@@ -201,6 +272,10 @@ model Tender {
   generatedFiles     GeneratedFile[]
   chatConversations  ChatConversation[]
   auditLogs          AuditLog[]
+  workspaceTasks     WorkspaceTask[]
+  documentComments   DocumentComment[]
+  documentVersions   DocumentVersion[]
+  activityEvents     ActivityEvent[]
 
   @@index([organizationId, status])
   @@index([ownerId])
@@ -212,6 +287,11 @@ model TenderFile {
   organizationId String
   tenderId       String?
   purpose        FilePurpose
+  displayName    String?
+  description    String?
+  category       TenderFileCategory @default(OTHER)
+  isImportant    Boolean      @default(false)
+  version        Int          @default(1)
   fileName       String
   mimeType       String
   sizeBytes      Int
@@ -225,9 +305,12 @@ model TenderFile {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   tender         Tender?      @relation(fields: [tenderId], references: [id], onDelete: Cascade)
   chunks         TenderDocumentChunk[]
+  workspaceTasks WorkspaceTask[]
+  comments       DocumentComment[]
 
   @@index([organizationId, purpose])
   @@index([tenderId])
+  @@index([category])
   @@index([extractionStatus])
 }
 
@@ -386,15 +469,127 @@ model GeneratedFile {
   id         String            @id @default(cuid())
   tenderId   String
   proposalId String?
+  kind       GeneratedDocumentKind @default(SUBMISSION_PACKAGE)
   type       GeneratedFileType
   fileName   String
   storageKey String
+  title      String?
+  content    Json?
+  reviewStatus ReviewStatus @default(DRAFT)
+  reviewerId String?
+  lockedAt   DateTime?
+  version    Int              @default(1)
   createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
   tender     Tender            @relation(fields: [tenderId], references: [id], onDelete: Cascade)
   proposal   Proposal?         @relation(fields: [proposalId], references: [id])
+  reviewer   User?             @relation("DocumentReviewer", fields: [reviewerId], references: [id])
+  versions   DocumentVersion[]
+  comments   DocumentComment[]
+  workspaceTasks WorkspaceTask[]
 
   @@index([tenderId])
   @@index([proposalId])
+  @@index([reviewStatus])
+  @@index([reviewerId])
+}
+
+model DocumentVersion {
+  id              String        @id @default(cuid())
+  tenderId        String
+  generatedFileId String
+  version         Int
+  title           String
+  content         Json?
+  changeSummary   String?
+  createdById     String?
+  createdAt       DateTime      @default(now())
+  tender          Tender        @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  generatedFile   GeneratedFile @relation(fields: [generatedFileId], references: [id], onDelete: Cascade)
+
+  @@unique([generatedFileId, version])
+  @@index([tenderId])
+  @@index([createdById])
+}
+
+model DocumentComment {
+  id              String         @id @default(cuid())
+  tenderId        String
+  tenderFileId    String?
+  generatedFileId String?
+  authorId        String?
+  content         String
+  anchor          Json?
+  resolvedAt      DateTime?
+  createdAt       DateTime       @default(now())
+  tender          Tender         @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  tenderFile      TenderFile?    @relation(fields: [tenderFileId], references: [id], onDelete: Cascade)
+  generatedFile   GeneratedFile? @relation(fields: [generatedFileId], references: [id], onDelete: Cascade)
+  author          User?          @relation(fields: [authorId], references: [id])
+
+  @@index([tenderId, createdAt])
+  @@index([tenderFileId])
+  @@index([generatedFileId])
+  @@index([authorId])
+}
+
+model WorkspaceTask {
+  id              String              @id @default(cuid())
+  tenderId        String
+  title           String
+  description     String?
+  assigneeId      String?
+  createdById     String?
+  dueDate         DateTime?
+  priority        Priority            @default(MEDIUM)
+  status          WorkspaceTaskStatus @default(TODO)
+  relatedFileId   String?
+  generatedFileId String?
+  relatedAgent    String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  tender          Tender              @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  assignee        User?               @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  createdBy       User?               @relation("TaskCreator", fields: [createdById], references: [id])
+  relatedFile     TenderFile?         @relation(fields: [relatedFileId], references: [id], onDelete: SetNull)
+  generatedFile   GeneratedFile?      @relation(fields: [generatedFileId], references: [id], onDelete: SetNull)
+
+  @@index([tenderId, status])
+  @@index([assigneeId])
+  @@index([createdById])
+  @@index([relatedFileId])
+  @@index([generatedFileId])
+  @@index([dueDate])
+}
+
+model ActivityEvent {
+  id             String       @id @default(cuid())
+  organizationId String
+  tenderId       String?
+  actorId        String?
+  message        String
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+  tender         Tender?      @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@index([tenderId, createdAt])
+  @@index([actorId])
+}
+
+model IntegrationConnection {
+  id             String              @id @default(cuid())
+  organizationId String
+  provider       IntegrationProvider
+  status         IntegrationStatus   @default(NOT_CONNECTED)
+  externalAccount String?
+  settings       Json?
+  lastSyncedAt   DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@unique([organizationId, provider])
+  @@index([organizationId, status])
 }
 
 model Supplier {

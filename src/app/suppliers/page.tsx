@@ -1,5 +1,5 @@
-import { ModulePage } from "@/components/module-page";
+﻿import { redirect } from "next/navigation";
 
-export default function SuppliersPage() {
-  return <ModulePage title="Suppliers" description="Supplier and subcontractor records connected to tender estimation." emptyTitle="No suppliers configured yet" />;
+export default function LegacyModuleRedirect() {
+  redirect("/workspace");
 }

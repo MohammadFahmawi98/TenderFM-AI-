@@ -1,5 +1,5 @@
-import { ModulePage } from "@/components/module-page";
+﻿import { redirect } from "next/navigation";
 
-export default function ExportsPage() {
-  return <ModulePage title="Export Center" description="PDF, DOCX, XLSX, PPTX, and ZIP generation from real tender records." emptyTitle="No generated files yet" />;
+export default function ExportsRedirect() {
+  redirect("/documents");
 }

@@ -1,5 +1,5 @@
-import { ModulePage } from "@/components/module-page";
+﻿import { redirect } from "next/navigation";
 
-export default function TenderChatPage() {
-  return <ModulePage title="Tender Chat" description="Ask grounded questions with source document, page reference, and confidence score." emptyTitle="No tender conversation selected" />;
+export default function LegacyModuleRedirect() {
+  redirect("/workspace");
 }

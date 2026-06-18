@@ -1,5 +1,5 @@
-import { ModulePage } from "@/components/module-page";
+﻿import { redirect } from "next/navigation";
 
-export default function EstimationPage() {
-  return <ModulePage title="Cost Estimation" description="Labor, materials, equipment, subcontractors, overhead, profit, VAT, and bid price." emptyTitle="No cost estimates yet" />;
+export default function LegacyModuleRedirect() {
+  redirect("/workspace");
 }

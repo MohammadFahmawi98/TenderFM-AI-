@@ -1,5 +1,5 @@
-import { ModulePage } from "@/components/module-page";
+﻿import { redirect } from "next/navigation";
 
-export default function RiskRegisterPage() {
-  return <ModulePage title="Risk Register" description="Commercial, technical, financial, operational, compliance, and resource risks." emptyTitle="No risks identified yet" />;
+export default function LegacyModuleRedirect() {
+  redirect("/workspace");
 }

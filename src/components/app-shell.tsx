@@ -2,90 +2,70 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Database, Plus, Search, Sparkles } from "lucide-react";
+import { CommandBar } from "@/components/command-bar";
 import { navItems } from "@/lib/navigation";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <main className="min-h-screen bg-[#0B1020] text-[#F8FAFC]">
-      <div className="grid min-h-screen md:grid-cols-[248px_1fr] xl:grid-cols-[280px_1fr]">
-        <aside className="hidden max-h-screen border-r border-[#1E293B] bg-[#0F172A]/95 md:sticky md:top-0 md:block md:overflow-y-auto">
-          <Link href="/" className="flex h-20 items-center gap-3 border-b border-[#1E293B] px-5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#3B82F6]">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold">TenderFlow</p>
-              <p className="text-xs text-[#94A3B8]">FM AI Command</p>
-            </div>
+    <main className="min-h-screen bg-[#050816] text-white">
+      <div className="grid min-h-screen md:grid-cols-[240px_1fr]">
+        <aside className="hidden max-h-screen border-r border-[#162033] bg-[#0B1220] md:sticky md:top-0 md:block md:overflow-y-auto">
+          <Link href="/" className="block border-b border-[#162033] px-6 py-7">
+            <p className="text-lg font-semibold tracking-tight">TenderFlow</p>
+            <p className="mt-1 text-xs uppercase tracking-[0.22em] text-[#94A3B8]">FM AI</p>
           </Link>
-          <nav className="space-y-1 px-3 py-4">
+
+          <nav className="py-5">
             {navItems.map((item) => {
               const active = pathname === item.href;
               return (
                 <Link
                   key={item.label}
                   href={item.href}
-                  className={`flex h-10 w-full items-center gap-3 rounded-md px-3 text-left text-sm transition ${
-                    active
-                      ? "bg-[#1E293B] text-white"
-                      : "text-[#94A3B8] hover:bg-[#111827] hover:text-white"
+                  className={`group relative flex h-12 items-center px-6 text-[13px] font-medium tracking-[0.13em] transition ${
+                    active ? "bg-[#111827] text-white" : "text-[#94A3B8] hover:bg-[#0F172A] hover:text-white"
                   }`}
                 >
-                  <item.icon className="h-4 w-4 shrink-0" />
-                  <span>{item.label}</span>
+                  <span
+                    className={`absolute left-0 top-2 h-8 w-[3px] rounded-r-full transition ${
+                      active ? "bg-[#00E5FF]" : "bg-transparent group-hover:bg-[#1E293B]"
+                    }`}
+                  />
+                  {item.label}
                 </Link>
               );
             })}
           </nav>
-          <div className="mx-3 mb-4 rounded-lg border border-[#1E293B] bg-[#111827] p-3">
-            <div className="flex items-center gap-2 text-xs font-medium text-[#F8FAFC]">
-              <Database className="h-4 w-4 text-[#10B981]" />
-              Supabase connected
-            </div>
-            <p className="mt-2 text-xs leading-5 text-[#94A3B8]">
-              Live schema, RLS, auth APIs, and real record paths are active.
+
+          <div className="mx-4 mt-4 rounded-lg border border-[#162033] bg-[#111827] p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#00E5FF]">AI Bid Department</p>
+            <p className="mt-3 text-sm leading-6 text-[#94A3B8]">
+              Upload an RFP. TenderFlow activates the bid team and prepares the submission package.
             </p>
           </div>
         </aside>
 
         <section className="min-w-0">
-          <header className="sticky top-0 z-20 border-b border-[#1E293B] bg-[#0B1020]/88 px-4 backdrop-blur md:px-8">
+          <header className="sticky top-0 z-30 border-b border-[#162033] bg-[#050816]/90 px-4 backdrop-blur md:px-8">
             <div className="flex h-20 items-center justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-[#3B82F6]">
-                  Facility Management Tender Intelligence
-                </p>
-                <h1 className="truncate text-xl font-semibold md:text-2xl">
-                  TenderFlow FM AI
-                </h1>
+                <p className="text-xs font-medium uppercase tracking-[0.2em] text-[#00E5FF]">AI Tender Operating System</p>
+                <h1 className="truncate text-xl font-semibold tracking-tight md:text-2xl">TenderFlow FM AI</h1>
               </div>
-              <div className="hidden min-w-72 items-center gap-2 rounded-md border border-[#1E293B] bg-[#111827] px-3 py-2 md:flex">
-                <Search className="h-4 w-4 text-[#94A3B8]" />
-                <input
-                  className="w-full bg-transparent text-sm text-white outline-none placeholder:text-[#94A3B8]"
-                  placeholder="Search tenders, clients, documents"
-                />
-              </div>
-              <Link
-                href="/tenders/new"
-                className="flex h-10 shrink-0 items-center gap-2 rounded-md bg-[#3B82F6] px-3 text-sm font-semibold text-white md:px-4"
-              >
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">New Tender</span>
-              </Link>
+              <CommandBar />
             </div>
-            <nav className="flex gap-2 overflow-x-auto border-t border-[#1E293B] py-2 md:hidden">
-              {navItems.slice(0, 8).map((item) => (
+
+            <nav className="flex gap-2 overflow-x-auto border-t border-[#162033] py-2 md:hidden">
+              {navItems.map((item) => (
                 <Link
                   key={item.label}
                   href={item.href}
-                  className={`shrink-0 rounded-md border px-3 py-1.5 text-xs ${
+                  className={`shrink-0 rounded-md border px-3 py-1.5 text-xs tracking-[0.12em] ${
                     pathname === item.href
-                      ? "border-[#3B82F6] bg-[#3B82F6]/15 text-white"
-                      : "border-[#1E293B] bg-[#111827] text-[#94A3B8]"
+                      ? "border-[#00E5FF] bg-[#00E5FF]/10 text-white"
+                      : "border-[#162033] bg-[#111827] text-[#94A3B8]"
                   }`}
                 >
                   {item.label}

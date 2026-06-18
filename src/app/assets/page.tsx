@@ -1,5 +1,5 @@
-import { ModulePage } from "@/components/module-page";
+﻿import { redirect } from "next/navigation";
 
-export default function AssetsPage() {
-  return <ModulePage title="Asset Register" description="Extracted assets, lifecycle analysis, and replacement forecast." emptyTitle="No asset registers yet" />;
+export default function LegacyModuleRedirect() {
+  redirect("/workspace");
 }

@@ -1,5 +1,5 @@
-import { ModulePage } from "@/components/module-page";
+﻿import { redirect } from "next/navigation";
 
-export default function PpmPlannerPage() {
-  return <ModulePage title="PPM Planner" description="Daily, weekly, monthly, quarterly, semi-annual, and annual maintenance plans." emptyTitle="No PPM schedules yet" />;
+export default function LegacyModuleRedirect() {
+  redirect("/workspace");
 }

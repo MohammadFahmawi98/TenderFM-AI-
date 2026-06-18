@@ -1,5 +1,5 @@
-import { ModulePage } from "@/components/module-page";
+﻿import { redirect } from "next/navigation";
 
-export default function QualificationPage() {
-  return <ModulePage title="Qualification" description="GO, GO WITH CONDITIONS, and NO GO decisions based on real criteria." emptyTitle="No qualification scores yet" />;
+export default function LegacyModuleRedirect() {
+  redirect("/workspace");
 }

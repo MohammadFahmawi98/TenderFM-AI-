@@ -45,6 +45,13 @@ enum FilePurpose {
   ADDENDUM
 }
 
+enum ExtractionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  UNSUPPORTED
+}
+
 enum ComplianceStatus {
   AVAILABLE
   MISSING
@@ -183,6 +190,7 @@ model Tender {
   organization       Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   owner              User?              @relation("TenderOwner", fields: [ownerId], references: [id])
   files              TenderFile[]
+  documentChunks     TenderDocumentChunk[]
   analysis           TenderAnalysis?
   complianceItems    ComplianceItem[]
   riskItems          RiskItem[]
@@ -209,12 +217,36 @@ model TenderFile {
   sizeBytes      Int
   storageKey     String
   checksum       String?
+  extractionStatus ExtractionStatus @default(PENDING)
+  extractionError  String?
+  extractedText    String?
+  extractedAt      DateTime?
   uploadedAt     DateTime     @default(now())
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   tender         Tender?      @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  chunks         TenderDocumentChunk[]
 
   @@index([organizationId, purpose])
   @@index([tenderId])
+  @@index([extractionStatus])
+}
+
+model TenderDocumentChunk {
+  id           String     @id @default(cuid())
+  tenderFileId String
+  tenderId     String
+  chunkIndex   Int
+  content      String
+  tokenEstimate Int
+  pageRef      String?
+  metadata     Json?
+  createdAt    DateTime   @default(now())
+  tenderFile   TenderFile @relation(fields: [tenderFileId], references: [id], onDelete: Cascade)
+  tender       Tender     @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+
+  @@unique([tenderFileId, chunkIndex])
+  @@index([tenderId, chunkIndex])
+  @@index([tenderFileId])
 }
 
 model TenderAnalysis {

@@ -84,10 +84,55 @@ export async function getRecentTenders() {
         submissionDeadline: true,
         estimatedValue: true,
         currency: true,
+        files: {
+          select: {
+            id: true,
+            extractionStatus: true,
+          },
+        },
       },
     });
   } catch {
     return [];
+  }
+}
+
+export async function getLatestWorkspaceTender(organizationId?: string) {
+  if (!hasDatabaseUrl()) {
+    return null;
+  }
+
+  try {
+    return await getPrisma().tender.findFirst({
+      where: organizationId ? { organizationId } : undefined,
+      orderBy: { createdAt: "desc" },
+      include: {
+        files: {
+          orderBy: { uploadedAt: "desc" },
+          include: {
+            chunks: {
+              orderBy: { chunkIndex: "asc" },
+              take: 2,
+            },
+          },
+        },
+        analysis: true,
+        complianceItems: {
+          orderBy: [{ priority: "desc" }],
+          take: 6,
+        },
+        riskItems: {
+          orderBy: [{ score: "desc" }],
+          take: 6,
+        },
+        generatedFiles: {
+          orderBy: { createdAt: "desc" },
+          take: 8,
+        },
+      },
+    });
+  } catch {
+    return null;
   }
 }
 

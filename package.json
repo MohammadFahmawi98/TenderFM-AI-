@@ -16,8 +16,11 @@
     "@supabase/supabase-js": "^2.108.2",
     "clsx": "^2.1.1",
     "framer-motion": "^12.40.0",
+    "jszip": "^3.10.1",
     "lucide-react": "latest",
+    "mammoth": "^1.12.0",
     "next": "latest",
+    "pdf-parse": "^2.4.5",
     "react": "latest",
     "react-dom": "latest",
     "zod": "^4.4.3"

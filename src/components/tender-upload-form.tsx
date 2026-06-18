@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { UploadCloud } from "lucide-react";
 
 const categories = [
@@ -18,7 +19,7 @@ const categories = [
 ];
 
 export function TenderUploadForm() {
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -36,12 +37,16 @@ export function TenderUploadForm() {
     setSubmitting(false);
 
     if (!response.ok) {
-      setMessage(result.error ?? "Tender upload failed.");
+      setMessage({ type: "error", text: result.error ?? "Tender upload failed." });
       return;
     }
 
     form.reset();
-    setMessage(`Tender created: ${result.tender.name}`);
+    const extracted = result.tender.files.filter((file: { extractionStatus: string }) => file.extractionStatus === "COMPLETED").length;
+    setMessage({
+      type: "success",
+      text: `Tender created: ${result.tender.name}. ${extracted} file(s) extracted for AI workspace.`,
+    });
   }
 
   return (
@@ -78,7 +83,12 @@ export function TenderUploadForm() {
 
       {message ? (
         <div className="rounded-md border border-[#1E293B] bg-[#0B1020] px-3 py-2 text-sm text-[#F8FAFC]">
-          {message}
+          <span>{message.text}</span>
+          {message.type === "success" ? (
+            <Link href="/workspace" className="ml-2 font-semibold text-[#00E5FF]">
+              Open workspace
+            </Link>
+          ) : null}
         </div>
       ) : null}
 

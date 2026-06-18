@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { getPrisma, hasDatabaseUrl } from "@/lib/prisma";
 import {
@@ -7,6 +8,13 @@ import {
   getTenderFilesBucket,
   hasStorageConfig,
 } from "@/lib/supabase-storage";
+import {
+  buildInitialTenderAnalysis,
+  chunkDocumentText,
+  detectComplianceItems,
+  detectRiskItems,
+  extractDocumentText,
+} from "@/lib/document-extraction";
 
 export const runtime = "nodejs";
 
@@ -122,6 +130,11 @@ export async function POST(request: Request) {
     mimeType: string;
     sizeBytes: number;
     storageKey: string;
+    extractionStatus: "COMPLETED" | "FAILED" | "UNSUPPORTED";
+    extractionError?: string;
+    extractedText: string;
+    chunks: ReturnType<typeof chunkDocumentText>;
+    metadata?: Record<string, unknown>;
   }> = [];
 
   try {
@@ -143,29 +156,98 @@ export async function POST(request: Request) {
         throw error;
       }
 
+      const extraction = await extractDocumentText({
+        fileName: file.name,
+        mimeType: file.type || "application/octet-stream",
+        buffer: Buffer.from(bytes),
+      });
+
       uploadedFiles.push({
         fileName: file.name,
         mimeType: file.type || "application/octet-stream",
         sizeBytes: file.size,
         storageKey,
+        extractionStatus: extraction.status,
+        extractionError: extraction.error,
+        extractedText: extraction.text,
+        chunks: chunkDocumentText(extraction.text),
+        metadata: extraction.metadata,
       });
     }
 
-    await prisma.tenderFile.createMany({
-      data: uploadedFiles.map((file) => ({
-        organizationId,
-        tenderId: tender.id,
-        purpose: "TENDER_DOCUMENT",
-        fileName: file.fileName,
-        mimeType: file.mimeType,
-        sizeBytes: file.sizeBytes,
-        storageKey: file.storageKey,
-      })),
+    for (const file of uploadedFiles) {
+      await prisma.tenderFile.create({
+        data: {
+          organizationId,
+          tenderId: tender.id,
+          purpose: "TENDER_DOCUMENT",
+          fileName: file.fileName,
+          mimeType: file.mimeType,
+          sizeBytes: file.sizeBytes,
+          storageKey: file.storageKey,
+          extractionStatus: file.extractionStatus,
+          extractionError: file.extractionError,
+          extractedText: file.extractedText || undefined,
+          extractedAt: file.extractionStatus === "COMPLETED" ? new Date() : undefined,
+          chunks: {
+            create: file.chunks.map((chunk) => ({
+              tender: { connect: { id: tender.id } },
+              chunkIndex: chunk.chunkIndex,
+              content: chunk.content,
+              tokenEstimate: chunk.tokenEstimate,
+              pageRef: chunk.pageRef,
+              metadata: toPrismaJson({
+                ...(chunk.metadata ?? {}),
+                fileName: file.fileName,
+                extraction: file.metadata ?? {},
+              }),
+            })),
+          },
+        },
+      });
+    }
+
+    const combinedText = uploadedFiles.map((file) => file.extractedText).filter(Boolean).join("\n\n");
+    const chunkCount = uploadedFiles.reduce((total, file) => total + file.chunks.length, 0);
+    const analysis = buildInitialTenderAnalysis({
+      tenderName: tender.name,
+      clientName: tender.clientName,
+      combinedText,
+      fileCount: uploadedFiles.length,
+      chunkCount,
+    });
+    const complianceItems = detectComplianceItems(combinedText);
+    const riskItems = detectRiskItems(combinedText);
+
+    await prisma.tender.update({
+      where: { id: tender.id },
+      data: {
+        status: chunkCount > 0 ? "ANALYZED" : "UPLOADED",
+        analysis: {
+          create: analysis,
+        },
+        complianceItems: complianceItems.length ? { create: complianceItems } : undefined,
+        riskItems: riskItems.length ? { create: riskItems } : undefined,
+        auditLogs: {
+          create: {
+            organizationId,
+            userId,
+            action: "tender.extracted",
+            entityType: "Tender",
+            metadata: {
+              extractedFiles: uploadedFiles.filter((file) => file.extractionStatus === "COMPLETED").length,
+              chunkCount,
+              complianceSignals: complianceItems.length,
+              riskSignals: riskItems.length,
+            },
+          },
+        },
+      },
     });
 
     const storedTender = await prisma.tender.findUnique({
       where: { id: tender.id },
-      include: { files: true },
+      include: { files: true, analysis: true },
     });
 
     return NextResponse.json({ tender: storedTender }, { status: 201 });
@@ -190,4 +272,8 @@ function getCookieValue(cookieHeader: string | null, key: string) {
     .map((cookie) => cookie.trim())
     .find((cookie) => cookie.startsWith(`${key}=`))
     ?.split("=")[1];
+}
+
+function toPrismaJson(value: Record<string, unknown>): Prisma.InputJsonValue {
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 }

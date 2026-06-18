@@ -30,9 +30,16 @@ export default async function TendersPage() {
                 <div key={tender.id} className="grid gap-2 p-5 md:grid-cols-[1fr_180px_160px]">
                   <div>
                     <p className="font-medium">{tender.name}</p>
-                    <p className="text-sm text-[#94A3B8]">{tender.clientName}</p>
+                    <p className="text-sm text-[#94A3B8]">
+                      {tender.clientName} · {tender.files.length} file{tender.files.length === 1 ? "" : "s"}
+                    </p>
                   </div>
-                  <p className="text-sm">{tender.status}</p>
+                  <div className="text-sm">
+                    <p>{tender.status}</p>
+                    <p className="text-xs text-[#94A3B8]">
+                      {tender.files.filter((file) => file.extractionStatus === "COMPLETED").length} extracted
+                    </p>
+                  </div>
                   <p className="text-sm text-[#94A3B8]">
                     {tender.submissionDeadline?.toLocaleDateString() ?? "No deadline"}
                   </p>
